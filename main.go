@@ -22,10 +22,10 @@ var (
 	DeviceDataNumWorkers = 5
 )
 
-func reader(topic string, partition int) {
+func reader(topic string, broker string, partition int) {
 	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:   []string{Broker},
-		Topic:     Topic,
+		Brokers:   []string{broker},
+		Topic:     topic,
 		Partition: partition,
 		MinBytes:  10e3, // 10KB
 		MaxBytes:  10e6, // 10MB
@@ -45,6 +45,7 @@ func reader(topic string, partition int) {
 
 func main() {
 	topics, _ := os.LookupEnv("KAFKA_TOPIC")
+	broker, _ := os.LookupEnv("KAFKA_BROKERS")
 
 	fmt.Println("In main")
 	time.Sleep(10 * time.Second)
@@ -53,7 +54,7 @@ func main() {
 	startTime := time.Now()
 
 	for _, topic := range strings.Split(topics, ",") {
-		go reader(topic, 0)
+		go reader(topic, broker, 0)
 	}
 
 	fmt.Printf("Duration in seconds: %f\n", time.Now().Sub(startTime).Seconds())
