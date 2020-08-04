@@ -15,7 +15,7 @@ var (
 
 	Partition            = 0
 	Broker               = "kafka-kafka-bootstrap.kafka.svc.cluster.local:9092"
-	Topic                = "Marketo"
+	Topic                = "marketo"
 	GroupId              = "Marketo-Group-Consumer"
 	MaxMessages          = 40000000
 	WriteCount           = 50000
