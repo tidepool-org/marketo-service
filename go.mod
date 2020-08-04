@@ -1,4 +1,4 @@
-module github.com/tidepool-org/MarketoService
+module github.com/tidepool-org/marketo-service
 
 go 1.12
 
