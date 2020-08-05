@@ -11,15 +11,10 @@ import (
 )
 
 var (
-	KafkaContextTimeout = time.Duration(60) * time.Second
-
 	Partition            = 0
 	Broker               = "kafka-kafka-bootstrap.kafka.svc.cluster.local:9092"
 	Topic                = "marketo"
 	GroupId              = "Marketo-Group-Consumer"
-	MaxMessages          = 40000000
-	WriteCount           = 50000
-	DeviceDataNumWorkers = 5
 )
 
 func reader(topic string, broker string, partition int) {
@@ -30,9 +25,8 @@ func reader(topic string, broker string, partition int) {
 		MinBytes:  10e3, // 10KB
 		MaxBytes:  10e6, // 10MB
 	})
-	r.SetOffset(10)
 
-	for i := 0; i < MaxMessages; i++ {
+	for {
 		m, err := r.ReadMessage(context.Background())
 		if err != nil {
 			break
