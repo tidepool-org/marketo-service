@@ -111,9 +111,10 @@ func (a *Api) reader(topic string, broker string, partition int) {
 	r.Close()
 }
 
-func (a *Api) main() {
+func main() {
 	topics, _ := os.LookupEnv("KAFKA_TOPIC")
 	broker, _ := os.LookupEnv("KAFKA_BROKERS")
+	a := Api{}
 
 	fmt.Println("In main")
 	time.Sleep(10 * time.Second)
