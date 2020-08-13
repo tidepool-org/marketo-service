@@ -118,7 +118,7 @@ func main() {
 	broker, _ := os.LookupEnv("KAFKA_BROKERS")
 	a := Api{}
 
-	fmt.Println("In main")
+	fmt.Println("In main testing version")
 	time.Sleep(10 * time.Second)
 	fmt.Println("Finished sleep")
 
