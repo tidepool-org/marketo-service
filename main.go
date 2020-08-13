@@ -64,9 +64,9 @@ func (a *Api) reader(topic string, broker string, partition int) {
 	})
 
 	for {
-		var oldUser *User
-		var newUser *User
-		var deletedUser *User
+		var oldUser User
+		var newUser User
+		var deletedUser User
 		var message map[string]interface{}
 		m, err := r.ReadMessage(context.Background())
 		if err != nil {
@@ -82,7 +82,7 @@ func (a *Api) reader(topic string, broker string, partition int) {
 				if err := json.Unmarshal([]byte(newUserMessage), &newUser); err != nil {
 					fmt.Println(topic, "Error Unmarshalling New User", err)
 				} else {
-					a.marketoManager.CreateListMembershipForUser(newUser)
+					a.marketoManager.CreateListMembershipForUser(&newUser)
 				}
 			}
 			if message["op"] == "u" {
@@ -93,7 +93,7 @@ func (a *Api) reader(topic string, broker string, partition int) {
 				} else if err := json.Unmarshal([]byte(newUserMessage), &newUser); err != nil {
 					fmt.Println(topic, "Error Unmarshalling New User", err)
 				} else {
-					a.marketoManager.UpdateListMembershipForUser(oldUser, newUser, false)
+					a.marketoManager.UpdateListMembershipForUser(&oldUser, &newUser, false)
 				}
 			}
 			if message["op"] == "d" {
@@ -101,7 +101,7 @@ func (a *Api) reader(topic string, broker string, partition int) {
 				if err := json.Unmarshal([]byte(deletedUserMessage), &deletedUser); err != nil {
 					fmt.Println(topic, "Error Unmarshalling New User", err)
 				} else {
-					a.marketoManager.UpdateListMembershipForUser(oldUser, oldUser, true)
+					a.marketoManager.UpdateListMembershipForUser(&oldUser, &oldUser, true)
 				}
 			}
 			fmt.Printf("message at offset %d: %s = %s\n", m.Offset, string(m.Key), string(m.Value))
