@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"time"
+	"log"
+
 
 	"github.com/segmentio/kafka-go"
 	"github.com/tidepool-org/marketo-service/marketo"
@@ -76,17 +78,17 @@ func (a *Api) reader(topic string, broker string, partition int) {
 		if err != nil {
 			break
 		}
-		fmt.Println(string(m.Value))
+		log.Println(string(m.Value))
 		if err := json.Unmarshal(m.Value, &message); err != nil {
 			fmt.Println(topic, "Error Unmarshalling Message", err)
 		} else {
-			fmt.Println(message)
-			fmt.Println(message["op"])
+			log.Println(message)
+			log.Println(message["op"])
 			if message["op"] == "c" || message["op"] == "r" {
 				newUserMessage := fmt.Sprintf("%v", message["after"])
-				fmt.Println(newUserMessage)
+				log.Println(newUserMessage)
 				if err := json.Unmarshal([]byte(newUserMessage), &newUser); err != nil {
-					fmt.Println(topic, "Error Unmarshalling New User", err)
+					log.Println(topic, "Error Unmarshalling New User", err)
 				} else {
 					a.marketoManager.CreateListMembershipForUser(&newUser)
 				}
@@ -95,9 +97,9 @@ func (a *Api) reader(topic string, broker string, partition int) {
 				oldUserMessage := fmt.Sprintf("%v", message["before"])
 				newUserMessage := fmt.Sprintf("%v", message["after"])
 				if err := json.Unmarshal([]byte(oldUserMessage), &oldUser); err != nil {
-					fmt.Println(topic, "Error Unmarshalling Old User", err)
+					log.Println(topic, "Error Unmarshalling Old User", err)
 				} else if err := json.Unmarshal([]byte(newUserMessage), &newUser); err != nil {
-					fmt.Println(topic, "Error Unmarshalling New User", err)
+					log.Println(topic, "Error Unmarshalling New User", err)
 				} else {
 					a.marketoManager.UpdateListMembershipForUser(&oldUser, &newUser, false)
 				}
@@ -105,12 +107,12 @@ func (a *Api) reader(topic string, broker string, partition int) {
 			if message["op"] == "d" {
 				deletedUserMessage := fmt.Sprintf("%v", message["after"])
 				if err := json.Unmarshal([]byte(deletedUserMessage), &deletedUser); err != nil {
-					fmt.Println(topic, "Error Unmarshalling New User", err)
+					log.Println(topic, "Error Unmarshalling New User", err)
 				} else {
 					a.marketoManager.UpdateListMembershipForUser(&oldUser, &oldUser, true)
 				}
 			}
-			fmt.Printf("message at offset %d: %s = %s\n", m.Offset, string(m.Key), string(m.Value))
+			log.Printf("message at offset %d: %s = %s\n", m.Offset, string(m.Key), string(m.Value))
 		}
 	}
 
@@ -122,9 +124,9 @@ func main() {
 	broker, _ := os.LookupEnv("KAFKA_BROKERS")
 	a := Api{}
 
-	fmt.Println("In main testing version")
+	log.Println("In main testing version")
 	time.Sleep(10 * time.Second)
-	fmt.Println("Finished sleep")
+	log.Println("Finished sleep")
 
 	startTime := time.Now()
 
@@ -132,9 +134,9 @@ func main() {
 		go a.reader(topic, broker, 0)
 	}
 
-	fmt.Printf("Duration in seconds: %f\n", time.Now().Sub(startTime).Seconds())
+	log.Printf("Duration in seconds: %f\n", time.Now().Sub(startTime).Seconds())
 	// Hack - do not quit for now
-	fmt.Println("Sleeping until the end of time")
+	log.Println("Sleeping until the end of time")
 	for {
 		time.Sleep(100 * time.Second)
 	}
