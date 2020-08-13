@@ -38,6 +38,10 @@ type User struct {
 	DeletedTime    string   `json:"deletedTime,omitempty" bson:"deletedTime,omitempty"`
 	DeletedUserID  string   `json:"deletedUserId,omitempty" bson:"deletedUserId,omitempty"`
 }
+type NewUser struct {
+	Username       string   `json:"username,omitempty" bson:"username,omitempty"`
+	Roles          []string `json:"roles,omitempty" bson:"roles,omitempty"`
+}
 
 func (u *User) IsClinic() bool {
 	return u.HasRole("clinic")
@@ -72,7 +76,7 @@ func (a *Api) reader(topic string, broker string, partition int) {
 		if err != nil {
 			break
 		}
-		// key := string(m.Key)
+		fmt.Println(m.Value)
 		if err := json.Unmarshal(m.Value, &message); err != nil {
 			fmt.Println(topic, "Error Unmarshalling Message", err)
 		} else {
