@@ -76,7 +76,7 @@ func (a *Api) reader(topic string, broker string, partition int) {
 		if err != nil {
 			break
 		}
-		fmt.Println(m.Value)
+		fmt.Println(string(m.Value))
 		if err := json.Unmarshal(m.Value, &message); err != nil {
 			fmt.Println(topic, "Error Unmarshalling Message", err)
 		} else {
