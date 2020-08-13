@@ -120,6 +120,7 @@ func (a *Api) reader(topic string, broker string, partition int) {
 }
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	topics, _ := os.LookupEnv("KAFKA_TOPIC")
 	broker, _ := os.LookupEnv("KAFKA_BROKERS")
 	a := Api{}
