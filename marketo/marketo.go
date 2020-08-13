@@ -170,7 +170,7 @@ func (m *Connector) CreateListMembershipForUser(newUser User) {
 		return
 	}
 
-	go m.UpsertListMembership(nil, newUser, false)
+	m.UpsertListMembership(nil, newUser, false)
 }
 
 // UpdateListMembershipForUser is an asynchronous function that updates a user
@@ -181,7 +181,7 @@ func (m *Connector) UpdateListMembershipForUser(oldUser User, newUser User, bool
 		return
 	}
 
-	go m.UpsertListMembership(oldUser, newUser, boolean)
+	m.UpsertListMembership(oldUser, newUser, boolean)
 }
 
 // UpsertListMembership creates or updates a user depending on if the user already exists or not
