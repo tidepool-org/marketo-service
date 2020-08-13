@@ -76,9 +76,11 @@ func (a *Api) reader(topic string, broker string, partition int) {
 		if err := json.Unmarshal(m.Value, &message); err != nil {
 			fmt.Println(topic, "Error Unmarshalling Message", err)
 		} else {
-
+			fmt.Println(message)
+			fmt.Println(message["op"])
 			if message["op"] == "c" || message["op"] == "r" {
 				newUserMessage := fmt.Sprintf("%v", message["after"])
+				fmt.Println(newUserMessage)
 				if err := json.Unmarshal([]byte(newUserMessage), &newUser); err != nil {
 					fmt.Println(topic, "Error Unmarshalling New User", err)
 				} else {
