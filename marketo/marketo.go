@@ -49,11 +49,11 @@ type RecordResult struct {
 
 // Input type is the request user information format sent to marketo
 type Input struct {
-	ID       int    `json:"id,omitempty"`
-	Email    string `json:"email"`
-	UserType string `json:"userType"`
-	Unsubscribed bool `json:"unsubscribed"`
-	DeletedAccount bool `json:"deletedAccount"`
+	ID             int    `json:"id,omitempty"`
+	Email          string `json:"email"`
+	UserType       string `json:"userType"`
+	Unsubscribed   bool   `json:"unsubscribed"`
+	DeletedAccount bool   `json:"deletedAccount"`
 	// Env		  string `json:"envType"`
 }
 

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/segmentio/kafka-go"
-	"github.com/tidepool-org/shoreline/user/marketo"
+	"github.com/tidepool-org/marketo-service/marketo"
 )
 
 var (

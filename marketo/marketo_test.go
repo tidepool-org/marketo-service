@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tidepool-org/shoreline/user/marketo"
+	"github.com/tidepool-org/marketo-service/marketo"
 )
 
 func Test_Config_Validate_Missing(t *testing.T) {
