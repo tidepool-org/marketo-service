@@ -1,3 +1,5 @@
+github.com/SpeakData/minimarketo v0.0.0-20170821092521-29339e452f44 h1:AlqM67XAlZL9CNdYqyhaeMKIzrdFdPMc/IzN+zvgp1w=
+github.com/SpeakData/minimarketo v0.0.0-20170821092521-29339e452f44/go.mod h1:uLiuODhOYuGlH08m3L6ycCgzGYikBJsV7MhXkVk/WkM=
 github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21/go.mod h1:+020luEh2TKB4/GOp8oxxtq0Daoen/Cii55CzbTV6DU=
 github.com/golang/snappy v0.0.1/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
 github.com/klauspost/compress v1.9.8/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=
