@@ -12,6 +12,9 @@ import (
 
 	"github.com/segmentio/kafka-go"
 	"github.com/tidepool-org/marketo-service/marketo"
+	"github.com/tidepool-org/marketo-service/store"
+	"github.com/tidepool-org/go-common/clients/mongo"
+
 )
 
 var (
@@ -23,6 +26,13 @@ var (
 
 type Api struct {
 	marketoManager marketo.Manager
+	store *store.MongoStoreClient
+}
+type Config struct {
+	// clients.Config
+	// Service disc.ServiceListing `json:"service"`
+	Mongo   mongo.Config        `json:"mongo"`
+	// User    user.ApiConfig      `json:"user"`
 }
 type User struct {
 	Id             string   `json:"userid,omitempty" bson:"userid,omitempty"` // map userid to id
@@ -60,7 +70,7 @@ func (u *User) HasRole(role string) bool {
 	return false
 }
 
-func (a *Api) reader(topic string, broker string, partition int) {
+func (a *Api) reader(topic string, broker string, partition int, clientStore *store.MongoStoreClient) {
 	r := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:   []string{broker},
 		Topic:     topic,
@@ -68,7 +78,7 @@ func (a *Api) reader(topic string, broker string, partition int) {
 		MinBytes:  10e3, // 10KB
 		MaxBytes:  10e6, // 10MB
 	})
-
+	
 	for {
 		var oldUser User
 		var newUser User
@@ -83,25 +93,25 @@ func (a *Api) reader(topic string, broker string, partition int) {
 			fmt.Println(topic, "Error Unmarshalling Message", err)
 		} else {
 			log.Println(message)
-			log.Println(message["op"])
-			if message["op"] == "c" || message["op"] == "r" {
-				newUserMessage := fmt.Sprintf("%v", message["after"])
+			log.Println(message["user"])
+			
+			if message["event"] == "create-user" {
+				newUserMessage := fmt.Sprintf("%v", message["user"])
 				log.Println(newUserMessage)
-				if err := json.Unmarshal([]byte(newUserMessage), &newUser); err != nil {
+				userFromDataBase := a.findUser(newUserMessage)
+				if err := json.Unmarshal([]byte(userFromDataBase.Id), &newUser); err != nil {
 					log.Println(topic, "Error Unmarshalling New User", err)
 				} else {
 					a.marketoManager.CreateListMembershipForUser(&newUser)
 				}
 			}
-			if message["op"] == "u" {
-				oldUserMessage := fmt.Sprintf("%v", message["before"])
-				newUserMessage := fmt.Sprintf("%v", message["after"])
-				if err := json.Unmarshal([]byte(oldUserMessage), &oldUser); err != nil {
+			if message["event"] == "update-user" {
+				oldUserMessage := fmt.Sprintf("%v", message["user"])
+				userFromDataBase := a.findUser(oldUserMessage)
+				if err := json.Unmarshal([]byte(userFromDataBase.Id), &oldUser); err != nil {
 					log.Println(topic, "Error Unmarshalling Old User", err)
-				} else if err := json.Unmarshal([]byte(newUserMessage), &newUser); err != nil {
-					log.Println(topic, "Error Unmarshalling New User", err)
 				} else {
-					a.marketoManager.UpdateListMembershipForUser(&oldUser, &newUser, false)
+					a.marketoManager.UpdateListMembershipForUser(&oldUser, &oldUser, false)
 				}
 			}
 			if message["op"] == "d" {
@@ -119,7 +129,22 @@ func (a *Api) reader(topic string, broker string, partition int) {
 	r.Close()
 }
 
+func (a *Api) findUser(id string) *store.User{
+	if results, err := a.store.WithContext(context.Background()).FindUser(id); err != nil {
+		log.Printf("%v", err)
+	} else {
+		return results
+	}
+	return &store.User{}
+}
+
 func main() {
+	var config Config
+	config.Mongo.FromEnv()
+	clientStore := store.NewMongoStoreClient(&config.Mongo)
+	defer clientStore.Disconnect()
+	clientStore.EnsureIndexes()
+
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	topics, _ := os.LookupEnv("KAFKA_TOPIC")
 	broker, _ := os.LookupEnv("KAFKA_BROKERS")
@@ -132,7 +157,7 @@ func main() {
 	startTime := time.Now()
 
 	for _, topic := range strings.Split(topics, ",") {
-		go a.reader(topic, broker, 0)
+		go a.reader(topic, broker, 0, clientStore)
 	}
 
 	log.Printf("Duration in seconds: %f\n", time.Now().Sub(startTime).Seconds())
