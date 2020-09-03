@@ -28,7 +28,6 @@ var usersCollation *options.Collation = &options.Collation{Locale: "en", Strengt
 // MongoStoreClient - Mongo Storage Client
 type MongoStoreClient struct {
 	client   *mongo.Client
-	context  context.Context
 	database string
 }
 type User struct {
@@ -62,21 +61,8 @@ func NewMongoStoreClient(config *tpMongo.Config) *MongoStoreClient {
 
 	return &MongoStoreClient{
 		client:   mongoClient,
-		context:  context.Background(),
 		database: config.Database,
 	}
-}
-
-// WithContext returns a shallow copy of c with its context changed
-// to ctx. The provided ctx must be non-nil.
-func (msc *MongoStoreClient) WithContext(ctx context.Context) *MongoStoreClient {
-	if ctx == nil {
-		panic("nil context")
-	}
-	msc2 := new(MongoStoreClient)
-	*msc2 = *msc
-	msc2.context = ctx
-	return msc2
 }
 
 func usersCollection(msc *MongoStoreClient) *mongo.Collection {
@@ -88,25 +74,25 @@ func tokensCollection(msc *MongoStoreClient) *mongo.Collection {
 }
 
 // Ping the MongoDB database
-func (msc *MongoStoreClient) Ping() error {
+func (msc *MongoStoreClient) Ping(ctx context.Context) error {
 	// do we have a store session
-	return msc.client.Ping(msc.context, nil)
+	return msc.client.Ping(ctx, nil)
 }
 
 // Disconnect from the MongoDB database
-func (msc *MongoStoreClient) Disconnect() error {
-	return msc.client.Disconnect(msc.context)
+func (msc *MongoStoreClient) Disconnect(ctx context.Context) error {
+	return msc.client.Disconnect(ctx)
 }
 
 // UpsertUser - Update an existing user's details, or insert a new user if the user doesn't already exist.
-func (msc *MongoStoreClient) UpsertUser(user *User) error {
+func (msc *MongoStoreClient) UpsertUser(ctx context.Context, user *User) error {
 	if user.Roles != nil {
 		sort.Strings(user.Roles)
 	}
 
 	// if the user already exists we update otherwise we add
 	opts := options.FindOneAndUpdate().SetUpsert(true).SetCollation(usersCollation)
-	result := usersCollection(msc).FindOneAndUpdate(msc.context, bson.M{"userid": user.Id}, bson.D{{Key: "$set", Value: user}}, opts)
+	result := usersCollection(msc).FindOneAndUpdate(ctx, bson.M{"userid": user.Id}, bson.D{{Key: "$set", Value: user}}, opts)
 	if result.Err() != mongo.ErrNoDocuments {
 		return result.Err()
 	}
@@ -114,10 +100,10 @@ func (msc *MongoStoreClient) UpsertUser(user *User) error {
 }
 
 // FindUser - find and return an existing user
-func (msc *MongoStoreClient) FindUser(id string) (result *User, err error) {
+func (msc *MongoStoreClient) FindUser(ctx context.Context, id string) (result *User, err error) {
 	if id != "" {
 		opts := options.FindOne().SetCollation(usersCollation)
-		if err = usersCollection(msc).FindOne(msc.context, bson.M{"userid": id}, opts).Decode(&result); err != nil {
+		if err = usersCollection(msc).FindOne(ctx, bson.M{"userid": id}, opts).Decode(&result); err != nil {
 			return result, err
 		}
 	}
@@ -125,14 +111,14 @@ func (msc *MongoStoreClient) FindUser(id string) (result *User, err error) {
 	return result, nil
 }
 // FindUsersWithIds - find and return multiple users by Tidepool User ID
-func (msc *MongoStoreClient) FindUsersWithIds(ids []string) (results []*User, err error) {
+func (msc *MongoStoreClient) FindUsersWithIds(ctx context.Context, ids []string) (results []*User, err error) {
 	opts := options.Find().SetCollation(usersCollation)
-	cursor, err := usersCollection(msc).Find(msc.context, bson.M{"userid": bson.M{"$in": ids}}, opts)
+	cursor, err := usersCollection(msc).Find(ctx, bson.M{"userid": bson.M{"$in": ids}}, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = cursor.All(msc.context, &results); err != nil {
+	if err = cursor.All(ctx, &results); err != nil {
 		return results, err
 	}
 
@@ -144,7 +130,7 @@ func (msc *MongoStoreClient) FindUsersWithIds(ids []string) (results []*User, er
 	return results, nil
 }
 // FindUsers - find and return multiple existing users
-func (msc *MongoStoreClient) FindUsers(user *User) (results []*User, err error) {
+func (msc *MongoStoreClient) FindUsers(ctx context.Context, user *User) (results []*User, err error) {
 	fieldsToMatch := []bson.M{}
 
 	if user.Id != "" {
@@ -162,12 +148,12 @@ func (msc *MongoStoreClient) FindUsers(user *User) (results []*User, err error) 
 	}
 
 	opts := options.Find().SetCollation(usersCollation)
-	cursor, err := usersCollection(msc).Find(msc.context, bson.M{"$or": fieldsToMatch}, opts)
+	cursor, err := usersCollection(msc).Find(ctx, bson.M{"$or": fieldsToMatch}, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = cursor.All(msc.context, &results); err != nil {
+	if err = cursor.All(ctx, &results); err != nil {
 		return results, err
 	}
 

@@ -4,17 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
-	"log"
-
 
 	"github.com/segmentio/kafka-go"
+	"github.com/tidepool-org/go-common/clients/mongo"
 	"github.com/tidepool-org/marketo-service/marketo"
 	"github.com/tidepool-org/marketo-service/store"
-	"github.com/tidepool-org/go-common/clients/mongo"
-
 )
 
 var (
@@ -26,12 +24,12 @@ var (
 
 type Api struct {
 	marketoManager marketo.Manager
-	store *store.MongoStoreClient
+	store          *store.MongoStoreClient
 }
 type Config struct {
 	// clients.Config
 	// Service disc.ServiceListing `json:"service"`
-	Mongo   mongo.Config        `json:"mongo"`
+	Mongo mongo.Config `json:"mongo"`
 	// User    user.ApiConfig      `json:"user"`
 }
 type User struct {
@@ -51,8 +49,8 @@ type User struct {
 	DeletedUserID  string   `json:"deletedUserId,omitempty" bson:"deletedUserId,omitempty"`
 }
 type NewUser struct {
-	Username       string   `json:"username,omitempty" bson:"username,omitempty"`
-	Roles          []string `json:"roles,omitempty" bson:"roles,omitempty"`
+	Username string   `json:"username,omitempty" bson:"username,omitempty"`
+	Roles    []string `json:"roles,omitempty" bson:"roles,omitempty"`
 }
 
 func (u *User) IsClinic() bool {
@@ -70,7 +68,7 @@ func (u *User) HasRole(role string) bool {
 	return false
 }
 
-func (a *Api) reader(topic string, broker string, partition int, clientStore *store.MongoStoreClient) {
+func (a *Api) reader(ctx context.Context, topic string, broker string, partition int, clientStore *store.MongoStoreClient) {
 	r := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:   []string{broker},
 		Topic:     topic,
@@ -78,7 +76,7 @@ func (a *Api) reader(topic string, broker string, partition int, clientStore *st
 		MinBytes:  10e3, // 10KB
 		MaxBytes:  10e6, // 10MB
 	})
-	
+
 	for {
 		var oldUser User
 		var newUser User
@@ -94,33 +92,52 @@ func (a *Api) reader(topic string, broker string, partition int, clientStore *st
 		} else {
 			log.Println(message)
 			log.Println(message["user"])
-			
+
 			if message["event"] == "create-user" {
-				newUserMessage := fmt.Sprintf("%v", message["user"])
-				log.Println(newUserMessage)
-				userFromDataBase := a.findUser(newUserMessage)
-				if err := json.Unmarshal([]byte(userFromDataBase.Id), &newUser); err != nil {
-					log.Println(topic, "Error Unmarshalling New User", err)
-				} else {
-					a.marketoManager.CreateListMembershipForUser(&newUser)
-				}
+				// newUserMessage := fmt.Sprintf("%v", message["user"])
+				// log.Println(newUserMessage)
+				// userFromDataBase, err := a.store.FindUser(ctx, newUserMessage)
+				// if err != nil {
+				// 	log.Println(err)
+				// 	return
+				// }
+				// userFromDataBaseBytes, _ := json.Marshal(userFromDataBase)
+				// if err := json.Unmarshal(userFromDataBaseBytes, &newUser); err != nil {
+				// 	log.Println(topic, "Error Unmarshalling New User", err)
+				// } else {
+				// 	a.marketoManager.CreateListMembershipForUser(&newUser)
+				// }
+				a.marketoUpdate(ctx, message, topic, newUser)
 			}
 			if message["event"] == "update-user" {
-				oldUserMessage := fmt.Sprintf("%v", message["user"])
-				userFromDataBase := a.findUser(oldUserMessage)
-				if err := json.Unmarshal([]byte(userFromDataBase.Id), &oldUser); err != nil {
-					log.Println(topic, "Error Unmarshalling Old User", err)
-				} else {
-					a.marketoManager.UpdateListMembershipForUser(&oldUser, &oldUser, false)
-				}
+				// oldUserMessage := fmt.Sprintf("%v", message["user"])
+				// userFromDataBase, err := a.store.FindUser(ctx, oldUserMessage)
+				// if err != nil {
+				// 	log.Println(err)
+				// 	return
+				// }
+				// userFromDataBaseBytes, _ := json.Marshal(userFromDataBase)
+				// if err := json.Unmarshal(userFromDataBaseBytes, &oldUser); err != nil {
+				// 	log.Println(topic, "Error Unmarshalling Old User", err)
+				// } else {
+				// 	a.marketoManager.UpdateListMembershipForUser(&oldUser, &oldUser, false)
+				// }
+				a.marketoUpdate(ctx, message, topic, oldUser)
 			}
-			if message["op"] == "d" {
-				deletedUserMessage := fmt.Sprintf("%v", message["after"])
-				if err := json.Unmarshal([]byte(deletedUserMessage), &deletedUser); err != nil {
-					log.Println(topic, "Error Unmarshalling New User", err)
-				} else {
-					a.marketoManager.UpdateListMembershipForUser(&oldUser, &oldUser, true)
-				}
+			if message["event"] == "delete-user" {
+				// deletedUserMessage := fmt.Sprintf("%v", message["user"])
+				// userFromDataBase, err := a.store.FindUser(ctx, deletedUserMessage)
+				// if err != nil {
+				// 	log.Println(err)
+				// 	return
+				// }
+				// userFromDataBaseBytes, _ := json.Marshal(userFromDataBase)
+				// if err := json.Unmarshal(userFromDataBaseBytes, &deletedUser); err != nil {
+				// 	log.Println(topic, "Error Unmarshalling New User", err)
+				// } else {
+				// 	a.marketoManager.UpdateListMembershipForUser(&oldUser, &oldUser, true)
+				// }
+				a.marketoUpdate(ctx, message, topic, deletedUser)
 			}
 			log.Printf("message at offset %d: %s = %s\n", m.Offset, string(m.Key), string(m.Value))
 		}
@@ -129,20 +146,32 @@ func (a *Api) reader(topic string, broker string, partition int, clientStore *st
 	r.Close()
 }
 
-func (a *Api) findUser(id string) *store.User{
-	if results, err := a.store.WithContext(context.Background()).FindUser(id); err != nil {
-		log.Printf("%v", err)
-	} else {
-		return results
+func (a *Api) marketoUpdate(ctx context.Context, message map[string]interface{}, topic string, user User) {
+	UserMessage := fmt.Sprintf("%v", message["user"])
+	log.Println(UserMessage)
+	userFromDataBase, err := a.store.FindUser(ctx, UserMessage)
+	if err != nil {
+		log.Println(err)
+		return
 	}
-	return &store.User{}
+	log.Println("User " + userFromDataBase.Username + " retrieved from database")
+	userFromDataBaseBytes, _ := json.Marshal(userFromDataBase)
+	if err := json.Unmarshal(userFromDataBaseBytes, &user); err != nil {
+		log.Println(topic, "Error Unmarshalling New User", err)
+	} else if message["event"] == "create-user" {
+		a.marketoManager.CreateListMembershipForUser(UserMessage, &user)
+	} else if message["event"] == "update-user" {
+		a.marketoManager.UpdateListMembershipForUser(UserMessage, &user, &user, false)
+	} else if message["event"] == "delete-user" {
+		a.marketoManager.UpdateListMembershipForUser(UserMessage, &user, &user, true)
+	}
 }
 
 func main() {
 	var config Config
 	config.Mongo.FromEnv()
 	clientStore := store.NewMongoStoreClient(&config.Mongo)
-	defer clientStore.Disconnect()
+	defer clientStore.Disconnect(context.Background())
 	clientStore.EnsureIndexes()
 
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -157,7 +186,7 @@ func main() {
 	startTime := time.Now()
 
 	for _, topic := range strings.Split(topics, ",") {
-		go a.reader(topic, broker, 0, clientStore)
+		go a.reader(context.Background(), topic, broker, 0, clientStore)
 	}
 
 	log.Printf("Duration in seconds: %f\n", time.Now().Sub(startTime).Seconds())

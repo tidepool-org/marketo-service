@@ -21,20 +21,21 @@ type User interface {
 
 // Manager interface for managing leads
 type Manager interface {
-	CreateListMembershipForUser(newUser User)
-	UpdateListMembershipForUser(oldUser User, newUser User, boolean bool)
+	CreateListMembershipForUser(tidepoolID string, newUser User)
+	UpdateListMembershipForUser(tidepoolID string, oldUser User, newUser User, boolean bool)
 	IsAvailable() bool
 }
 
 // LeadResult Find lead returns "result" in this format
 type LeadResult struct {
-	ID        int    `json:"id"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-	Email     string `json:"email"`
-	UserType  string `json:"userType"`
-	Created   string `json:"createdAt"`
-	Updated   string `json:"updatedAt"`
+	ID         int    `json:"id"`
+	TidepoolID string `json:"tidepoolID"`
+	FirstName  string `json:"firstName"`
+	LastName   string `json:"lastName"`
+	Email      string `json:"email"`
+	UserType   string `json:"userType"`
+	Created    string `json:"createdAt"`
+	Updated    string `json:"updatedAt"`
 }
 
 // RecordResult Create/update lead uses this format
@@ -50,6 +51,7 @@ type RecordResult struct {
 // Input type is the request user information format sent to marketo
 type Input struct {
 	ID             int    `json:"id,omitempty"`
+	TidepoolID     string `json:"tidepoolID"`
 	Email          string `json:"email"`
 	UserType       string `json:"userType"`
 	Unsubscribed   bool   `json:"unsubscribed"`
@@ -163,29 +165,29 @@ func NewManager(logger *log.Logger, config Config) (Manager, error) {
 }
 
 // CreateListMembershipForUser is an asynchronous function that creates a user
-func (m *Connector) CreateListMembershipForUser(newUser User) {
+func (m *Connector) CreateListMembershipForUser(tidepoolID string, newUser User) {
 	m.logger.Printf("CreateListMembershipForUser %v", newUser)
 	if newUser == nil {
 		m.logger.Printf("nil user")
 		return
 	}
 
-	m.UpsertListMembership(nil, newUser, false)
+	m.UpsertListMembership(tidepoolID, nil, newUser, false)
 }
 
 // UpdateListMembershipForUser is an asynchronous function that updates a user
-func (m *Connector) UpdateListMembershipForUser(oldUser User, newUser User, boolean bool) {
+func (m *Connector) UpdateListMembershipForUser(tidepoolID string, oldUser User, newUser User, boolean bool) {
 	m.logger.Printf("UpdateListMembershipForUser %v %v", oldUser, newUser)
 	if oldUser == nil || newUser == nil {
 		m.logger.Printf("nil user")
 		return
 	}
 
-	m.UpsertListMembership(oldUser, newUser, boolean)
+	m.UpsertListMembership(tidepoolID, oldUser, newUser, boolean)
 }
 
 // UpsertListMembership creates or updates a user depending on if the user already exists or not
-func (m *Connector) UpsertListMembership(oldUser User, newUser User, boolean bool) error {
+func (m *Connector) UpsertListMembership(tidepoolID string, oldUser User, newUser User, boolean bool) error {
 	if matchUsers(oldUser, newUser) {
 		return nil
 	}
@@ -206,7 +208,7 @@ func (m *Connector) UpsertListMembership(oldUser User, newUser User, boolean boo
 	if listEmail == "" {
 		listEmail = newEmail
 	}
-	if err := m.UpsertListMember(m.TypeForUser(newUser), listEmail, newEmail, boolean); err != nil {
+	if err := m.UpsertListMember(tidepoolID, m.TypeForUser(newUser), listEmail, newEmail, boolean); err != nil {
 		m.logger.Printf(`ERROR: marketo failure upserting member from "%s" to "%s"; %s`, listEmail, newEmail, err)
 		return err
 	}
@@ -214,8 +216,8 @@ func (m *Connector) UpsertListMembership(oldUser User, newUser User, boolean boo
 }
 
 // UpsertListMember creates or updates lead based on if lead already exists
-func (m *Connector) UpsertListMember(role string, listEmail string, newEmail string, boolean bool) error {
-	id, exists, err := m.FindLead(listEmail)
+func (m *Connector) UpsertListMember(tidepoolID string, role string, listEmail string, newEmail string, boolean bool) error {
+	id, exists, err := m.FindLead(tidepoolID)
 	if err != nil {
 		return fmt.Errorf("marketo: could not find a lead %v", err)
 	}
@@ -223,7 +225,7 @@ func (m *Connector) UpsertListMember(role string, listEmail string, newEmail str
 		"updateOnly",
 		"id",
 		[]Input{
-			Input{id, newEmail, role, boolean, boolean},
+			Input{id, tidepoolID, newEmail, role, boolean, boolean},
 		},
 	}
 	if !exists {
@@ -231,7 +233,7 @@ func (m *Connector) UpsertListMember(role string, listEmail string, newEmail str
 			"createOnly",
 			"email",
 			[]Input{
-				Input{0, newEmail, role, boolean, boolean},
+				Input{0, tidepoolID, newEmail, role, boolean, boolean},
 			},
 		}
 	}
@@ -254,10 +256,10 @@ func (m *Connector) UpsertListMember(role string, listEmail string, newEmail str
 }
 
 // FindLead is used to find a lead in Marketo
-func (m *Connector) FindLead(listEmail string) (int, bool, error) {
+func (m *Connector) FindLead(tidepoolID string) (int, bool, error) {
 	v := url.Values{
-		"filterType":   {"email"},
-		"filterValues": {listEmail},
+		"filterType":   {"tidepoolID"},
+		"filterValues": {tidepoolID},
 		"fields":       {"email,id"},
 	}
 	response, err := m.client.Get(path + v.Encode())
