@@ -170,6 +170,7 @@ func (a *Api) marketoUpdate(ctx context.Context, message map[string]interface{},
 func main() {
 	var config Config
 	config.Mongo.FromEnv()
+	log.Println(config)
 	clientStore := store.NewMongoStoreClient(&config.Mongo)
 	defer clientStore.Disconnect(context.Background())
 	clientStore.EnsureIndexes()

@@ -66,6 +66,7 @@ func NewMongoStoreClient(config *tpMongo.Config) *MongoStoreClient {
 }
 
 func usersCollection(msc *MongoStoreClient) *mongo.Collection {
+	log.Println(msc.database)
 	return msc.client.Database(msc.database).Collection(usersCollectionName)
 }
 
