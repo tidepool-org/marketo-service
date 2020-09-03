@@ -49,6 +49,7 @@ type User struct {
 // NewMongoStoreClient creates a new MongoStoreClient
 func NewMongoStoreClient(config *tpMongo.Config) *MongoStoreClient {
 	connectionString, err := config.ToConnectionString()
+	log.Printf("The full connection String: %v", connectionString)
 	if err != nil {
 		log.Fatal(userStoreAPIPrefix, fmt.Sprintf("Invalid MongoDB configuration: %s", err))
 	}
