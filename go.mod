@@ -1,6 +1,6 @@
 module github.com/tidepool-org/marketo-service
 
-go 1.12
+go 1.14
 
 require (
 	github.com/SpeakData/minimarketo v0.0.0-20170821092521-29339e452f44
