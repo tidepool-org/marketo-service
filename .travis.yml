@@ -1,0 +1,11 @@
+sudo: false
+
+env:
+  - GO111MODULE=on
+
+script:
+  - ./build.sh
+  - ./artifact.sh
+
+services:
+  - docker

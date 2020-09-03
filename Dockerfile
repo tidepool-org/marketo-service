@@ -1,9 +1,9 @@
 # Development
-FROM golang:1.13.10-alpine AS development
+FROM golang:1.14.7-alpine AS development
 WORKDIR /go/src/github.com/tidepool-org/marketo-service
 RUN apk --no-cache update && \
     apk --no-cache upgrade && \
-    apk add --no-cache ca-certificates && \
+    apk add --no-cache ca-certificates git && \
     adduser -D tidepool && \
     chown -R tidepool /go/src/github.com/tidepool-org/marketo-service
 USER tidepool
