@@ -105,6 +105,7 @@ func (msc *MongoStoreClient) UpsertUser(ctx context.Context, user *User) error {
 func (msc *MongoStoreClient) FindUser(ctx context.Context, id string) (result *User, err error) {
 	if id != "" {
 		opts := options.FindOne().SetCollation(usersCollation)
+		log.Printf("Mongo Client: %v  Mongo database: %v ", msc.client, msc.database)
 		if err = usersCollection(msc).FindOne(ctx, bson.M{"userid": id}, opts).Decode(&result); err != nil {
 			return result, err
 		}

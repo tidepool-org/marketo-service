@@ -68,7 +68,7 @@ func (u *User) HasRole(role string) bool {
 	return false
 }
 
-func (a *Api) reader(ctx context.Context, topic string, broker string, partition int, clientStore *store.MongoStoreClient) {
+func (a *Api) reader(ctx context.Context, topic string, broker string, partition int) {
 	r := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:   []string{broker},
 		Topic:     topic,
@@ -170,8 +170,8 @@ func (a *Api) marketoUpdate(ctx context.Context, message map[string]interface{},
 func main() {
 	var config Config
 	config.Mongo.FromEnv()
-	log.Println(config)
 	clientStore := store.NewMongoStoreClient(&config.Mongo)
+	log.Printf("Mongo config %v", config)
 	defer clientStore.Disconnect(context.Background())
 	clientStore.EnsureIndexes()
 
@@ -187,7 +187,7 @@ func main() {
 	startTime := time.Now()
 
 	for _, topic := range strings.Split(topics, ",") {
-		go a.reader(context.Background(), topic, broker, 0, clientStore)
+		go a.reader(context.Background(), topic, broker, 0)
 	}
 
 	log.Printf("Duration in seconds: %f\n", time.Now().Sub(startTime).Seconds())
