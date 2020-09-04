@@ -67,11 +67,6 @@ func NewMongoStoreClient(config *tpMongo.Config) *MongoStoreClient {
 }
 
 func usersCollection(msc *MongoStoreClient) *mongo.Collection {
-	log.Println(msc.database)
-	returnValueDatabase := msc.client.Database(msc.database)
-	log.Printf("Printing return value for database: %v", returnValueDatabase)
-	returnValueCollection := returnValueDatabase.Collection(usersCollectionName)
-	log.Printf("Printing return value for collection: %v", returnValueCollection )
 	return msc.client.Database(msc.database).Collection(usersCollectionName)
 }
 
@@ -109,7 +104,6 @@ func (msc *MongoStoreClient) UpsertUser(ctx context.Context, user *User) error {
 func (msc *MongoStoreClient) FindUser(ctx context.Context, id string) (result *User, err error) {
 	if id != "" {
 		opts := options.FindOne().SetCollation(usersCollation)
-		log.Printf("Mongo Client: %v  Mongo database: %v ", msc.client, msc.database)
 		if err = usersCollection(msc).FindOne(ctx, bson.M{"userid": id}, opts).Decode(&result); err != nil {
 			return result, err
 		}

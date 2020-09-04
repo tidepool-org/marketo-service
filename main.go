@@ -87,12 +87,9 @@ func (a *Api) reader(ctx context.Context, topic string, broker string, partition
 		if err != nil {
 			break
 		}
-		log.Println(string(m.Value))
 		if err := json.Unmarshal(m.Value, &message); err != nil {
 			fmt.Println(topic, "Error Unmarshalling Message", err)
 		} else {
-			log.Println(message)
-			log.Println(message["user"])
 
 			if message["event"] == "create-user" {
 				// newUserMessage := fmt.Sprintf("%v", message["user"])
@@ -149,7 +146,6 @@ func (a *Api) reader(ctx context.Context, topic string, broker string, partition
 
 func (a *Api) marketoUpdate(ctx context.Context, message map[string]interface{}, topic string, user User) {
 	UserMessage := fmt.Sprintf("%v", message["user"])
-	log.Println(UserMessage)
 	userFromDataBase, err := a.store.FindUser(ctx, UserMessage)
 	if err != nil {
 		log.Println(err)
