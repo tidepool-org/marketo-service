@@ -46,8 +46,6 @@ type User struct {
 	CreatedUserID  string   `json:"createdUserId,omitempty" bson:"createdUserId,omitempty"`
 	ModifiedTime   string   `json:"modifiedTime,omitempty" bson:"modifiedTime,omitempty"`
 	ModifiedUserID string   `json:"modifiedUserId,omitempty" bson:"modifiedUserId,omitempty"`
-	DeletedTime    string   `json:"deletedTime,omitempty" bson:"deletedTime,omitempty"`
-	DeletedUserID  string   `json:"deletedUserId,omitempty" bson:"deletedUserId,omitempty"`
 }
 type NewUser struct {
 	Username string   `json:"username,omitempty" bson:"username,omitempty"`
@@ -146,6 +144,7 @@ func (a *Api) reader(ctx context.Context, topic string, broker string, partition
 
 func (a *Api) marketoUpdate(ctx context.Context, message map[string]interface{}, topic string, user User) {
 	UserMessage := fmt.Sprintf("%v", message["user"])
+	log.Printf("User action message has been recieved for user: %v. preparing to get user info from database", UserMessage)
 	userFromDataBase, err := a.store.FindUser(ctx, UserMessage)
 	if err != nil {
 		log.Println(err)
@@ -156,10 +155,13 @@ func (a *Api) marketoUpdate(ctx context.Context, message map[string]interface{},
 	if err := json.Unmarshal(userFromDataBaseBytes, &user); err != nil {
 		log.Println(topic, "Error Unmarshalling New User", err)
 	} else if message["event"] == "create-user" {
+		log.Printf("Creating user %v in marketo database", userFromDataBase.Username)
 		a.marketoManager.CreateListMembershipForUser(UserMessage, &user)
 	} else if message["event"] == "update-user" {
+		log.Printf("Updating user %v in marketo database", userFromDataBase.Username)
 		a.marketoManager.UpdateListMembershipForUser(UserMessage, &user, &user, false)
 	} else if message["event"] == "delete-user" {
+		log.Printf("Removing user %v from email lists", userFromDataBase.Username)
 		a.marketoManager.UpdateListMembershipForUser(UserMessage, &user, &user, true)
 	}
 }
@@ -171,7 +173,6 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	config.Mongo.FromEnv()
 	clientStore := store.NewMongoStoreClient(&config.Mongo)
-	log.Printf("Mongo config %v", config)
 	defer clientStore.Disconnect(context.Background())
 	clientStore.EnsureIndexes()
 

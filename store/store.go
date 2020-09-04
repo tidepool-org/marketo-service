@@ -43,8 +43,6 @@ type User struct {
 	CreatedUserID  string   `json:"createdUserId,omitempty" bson:"createdUserId,omitempty"`
 	ModifiedTime   string   `json:"modifiedTime,omitempty" bson:"modifiedTime,omitempty"`
 	ModifiedUserID string   `json:"modifiedUserId,omitempty" bson:"modifiedUserId,omitempty"`
-	DeletedTime    string   `json:"deletedTime,omitempty" bson:"deletedTime,omitempty"`
-	DeletedUserID  string   `json:"deletedUserId,omitempty" bson:"deletedUserId,omitempty"`
 }
 // NewMongoStoreClient creates a new MongoStoreClient
 func NewMongoStoreClient(config *tpMongo.Config) *MongoStoreClient {
