@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,9 +30,8 @@ type Api struct {
 type Config struct {
 	// clients.Config
 	// Service disc.ServiceListing `json:"service"`
-	Mongo mongo.Config 		`json:"mongo"`
-	Marketo marketo.Config  `json:"marketo"`
-
+	Mongo   mongo.Config   `json:"mongo"`
+	Marketo marketo.Config `json:"marketo"`
 }
 type User struct {
 	Id             string   `json:"userid,omitempty" bson:"userid,omitempty"` // map userid to id
@@ -187,7 +187,16 @@ func main() {
 	config.Marketo.Secret, _ = os.LookupEnv("MARKETO_SECRET")
 	config.Marketo.ClinicRole, _ = os.LookupEnv("MARKETO_CLINIC_ROLE")
 	config.Marketo.PatientRole, _ = os.LookupEnv("MARKETO_PATIENT_ROLE")
-	
+	unParsedTimeout, found := os.LookupEnv("MARKETO_TIMEOUT")
+	if found {
+		parsedTimeout64, err := strconv.ParseInt(unParsedTimeout, 10, 32)
+		parsedTimeout := uint(parsedTimeout64)
+		if err != nil {
+			logger.Println(err)
+		}
+		config.Marketo.Timeout = parsedTimeout
+	}
+
 	var marketoManager marketo.Manager
 	if err := config.Marketo.Validate(); err != nil {
 		log.Println("WARNING: Marketo config is invalid", err)
@@ -195,12 +204,12 @@ func main() {
 		log.Print("initializing marketo manager")
 		marketoManager, _ = marketo.NewManager(logger, config.Marketo)
 	}
-	
+
 	a := Api{
 		marketoManager: marketoManager,
-		store: clientStore,
+		store:          clientStore,
 	}
-	
+
 	log.Println("In main testing version")
 	time.Sleep(10 * time.Second)
 	log.Println("Finished sleep")
