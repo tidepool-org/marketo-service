@@ -225,7 +225,7 @@ func (m *Connector) UpsertListMember(tidepoolID string, role string, listEmail s
 		"updateOnly",
 		"id",
 		[]Input{
-			Input{id, tidepoolID, newEmail, role, boolean, boolean},
+			{id, tidepoolID, newEmail, role, boolean, boolean},
 		},
 	}
 	if !exists {
@@ -233,7 +233,7 @@ func (m *Connector) UpsertListMember(tidepoolID string, role string, listEmail s
 			"createOnly",
 			"email",
 			[]Input{
-				Input{0, tidepoolID, newEmail, role, boolean, boolean},
+				{0, tidepoolID, newEmail, role, boolean, boolean},
 			},
 		}
 	}

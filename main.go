@@ -88,7 +88,7 @@ func (a *Api) reader(ctx context.Context, topic string, broker string, partition
 		if err := json.Unmarshal(m.Value, &message); err != nil {
 			fmt.Println(topic, "Error Unmarshalling Message", err)
 		} else {
-
+			log.Println(message)
 			if message["event"] == "create-user" {
 				// newUserMessage := fmt.Sprintf("%v", message["user"])
 				// log.Println(newUserMessage)
@@ -103,6 +103,7 @@ func (a *Api) reader(ctx context.Context, topic string, broker string, partition
 				// } else {
 				// 	a.marketoManager.CreateListMembershipForUser(&newUser)
 				// }
+				log.Println(newUser)
 				a.marketoUpdate(ctx, message, topic, newUser)
 			}
 			if message["event"] == "update-user" {
@@ -212,7 +213,7 @@ func main() {
 	log.Println("Finished sleep")
 
 	startTime := time.Now()
-
+	log.Printf("Connectiong to %v topic on %v broker", topics, broker)
 	for _, topic := range strings.Split(topics, ",") {
 		go a.reader(context.Background(), topic, broker, 0)
 	}
