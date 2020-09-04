@@ -29,8 +29,9 @@ type Api struct {
 type Config struct {
 	// clients.Config
 	// Service disc.ServiceListing `json:"service"`
-	Mongo mongo.Config `json:"mongo"`
-	// User    user.ApiConfig      `json:"user"`
+	Mongo mongo.Config 		`json:"mongo"`
+	Marketo marketo.Config  `json:"marketo"`
+
 }
 type User struct {
 	Id             string   `json:"userid,omitempty" bson:"userid,omitempty"` // map userid to id
@@ -169,6 +170,9 @@ func (a *Api) marketoUpdate(ctx context.Context, message map[string]interface{},
 
 func main() {
 	var config Config
+	logger := log.New(os.Stdout, "api/user", log.LstdFlags|log.Lshortfile)
+	log.SetPrefix("api/user")
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	config.Mongo.FromEnv()
 	clientStore := store.NewMongoStoreClient(&config.Mongo)
 	log.Printf("Mongo config %v", config)
@@ -178,8 +182,25 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	topics, _ := os.LookupEnv("KAFKA_TOPIC")
 	broker, _ := os.LookupEnv("KAFKA_BROKERS")
-	a := Api{}
-
+	config.Marketo.ID, _ = os.LookupEnv("MARKETO_ID")
+	config.Marketo.URL, _ = os.LookupEnv("MARKETO_URL")
+	config.Marketo.Secret, _ = os.LookupEnv("MARKETO_SECRET")
+	config.Marketo.ClinicRole, _ = os.LookupEnv("MARKETO_CLINIC_ROLE")
+	config.Marketo.PatientRole, _ = os.LookupEnv("MARKETO_PATIENT_ROLE")
+	
+	var marketoManager marketo.Manager
+	if err := config.Marketo.Validate(); err != nil {
+		log.Println("WARNING: Marketo config is invalid", err)
+	} else {
+		log.Print("initializing marketo manager")
+		marketoManager, _ = marketo.NewManager(logger, config.Marketo)
+	}
+	
+	a := Api{
+		marketoManager: marketoManager,
+		store: clientStore,
+	}
+	
 	log.Println("In main testing version")
 	time.Sleep(10 * time.Second)
 	log.Println("Finished sleep")
