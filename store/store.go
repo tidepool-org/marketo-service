@@ -68,8 +68,10 @@ func NewMongoStoreClient(config *tpMongo.Config) *MongoStoreClient {
 
 func usersCollection(msc *MongoStoreClient) *mongo.Collection {
 	log.Println(msc.database)
-	returnValue := msc.client.Database(msc.database).Collection(usersCollectionName)
-	log.Printf("Printing return value: %v", returnValue )
+	returnValueDatabase := msc.client.Database(msc.database)
+	log.Printf("Printing return value for database: %v", returnValueDatabase)
+	returnValueCollection := returnValueDatabase.Collection(usersCollectionName)
+	log.Printf("Printing return value for collection: %v", returnValueCollection )
 	return msc.client.Database(msc.database).Collection(usersCollectionName)
 }
 
