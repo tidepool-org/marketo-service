@@ -40,12 +40,6 @@ type User struct {
 	Roles          []string `json:"roles,omitempty" bson:"roles,omitempty"`
 	TermsAccepted  string   `json:"termsAccepted,omitempty" bson:"termsAccepted,omitempty"`
 	EmailVerified  bool     `json:"emailVerified" bson:"authenticated"` //tag is name `authenticated` for historical reasons
-	PwHash         string   `json:"-" bson:"pwhash,omitempty"`
-	Hash           string   `json:"-" bson:"userhash,omitempty"`
-	CreatedTime    string   `json:"createdTime,omitempty" bson:"createdTime,omitempty"`
-	CreatedUserID  string   `json:"createdUserId,omitempty" bson:"createdUserId,omitempty"`
-	ModifiedTime   string   `json:"modifiedTime,omitempty" bson:"modifiedTime,omitempty"`
-	ModifiedUserID string   `json:"modifiedUserId,omitempty" bson:"modifiedUserId,omitempty"`
 }
 type NewUser struct {
 	Username string   `json:"username,omitempty" bson:"username,omitempty"`
