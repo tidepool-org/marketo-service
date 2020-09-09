@@ -17,10 +17,9 @@ import (
 )
 
 var (
-	Partition = 0
-	Broker    = "kafka-kafka-bootstrap.kafka.svc.cluster.local:9092"
-	Topic     = "marketo"
-	GroupId   = "Marketo-Group-Consumer"
+	Broker  = "kafka-kafka-bootstrap.kafka.svc.cluster.local:9092"
+	Topic   = "marketo"
+	GroupId = "Marketo-Group-Consumer"
 )
 
 type Api struct {
@@ -34,12 +33,12 @@ type Config struct {
 	Marketo marketo.Config `json:"marketo"`
 }
 type User struct {
-	Id             string   `json:"userid,omitempty" bson:"userid,omitempty"` // map userid to id
-	Username       string   `json:"username,omitempty" bson:"username,omitempty"`
-	Emails         []string `json:"emails,omitempty" bson:"emails,omitempty"`
-	Roles          []string `json:"roles,omitempty" bson:"roles,omitempty"`
-	TermsAccepted  string   `json:"termsAccepted,omitempty" bson:"termsAccepted,omitempty"`
-	EmailVerified  bool     `json:"emailVerified" bson:"authenticated"` //tag is name `authenticated` for historical reasons
+	Id            string   `json:"userid,omitempty" bson:"userid,omitempty"` // map userid to id
+	Username      string   `json:"username,omitempty" bson:"username,omitempty"`
+	Emails        []string `json:"emails,omitempty" bson:"emails,omitempty"`
+	Roles         []string `json:"roles,omitempty" bson:"roles,omitempty"`
+	TermsAccepted string   `json:"termsAccepted,omitempty" bson:"termsAccepted,omitempty"`
+	EmailVerified bool     `json:"emailVerified" bson:"authenticated"` //tag is name `authenticated` for historical reasons
 }
 type NewUser struct {
 	Username string   `json:"username,omitempty" bson:"username,omitempty"`
@@ -61,13 +60,12 @@ func (u *User) HasRole(role string) bool {
 	return false
 }
 
-func (a *Api) reader(ctx context.Context, topic string, broker string, partition int) {
+func (a *Api) reader(ctx context.Context, topic string, broker string) {
 	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:   []string{broker},
-		Topic:     topic,
-		Partition: partition,
-		MinBytes:  10e3, // 10KB
-		MaxBytes:  10e6, // 10MB
+		Brokers:  []string{broker},
+		Topic:    topic,
+		MinBytes: 10e3, // 10KB
+		MaxBytes: 10e6, // 10MB
 	})
 
 	for {
@@ -212,7 +210,7 @@ func main() {
 	startTime := time.Now()
 	log.Printf("Connecting to %v topic on %v broker", topics, broker)
 	for _, topic := range strings.Split(topics, ",") {
-		go a.reader(context.Background(), topic, broker, 0)
+		go a.reader(context.Background(), topic, broker)
 	}
 
 	log.Printf("Duration in seconds: %f\n", time.Now().Sub(startTime).Seconds())
