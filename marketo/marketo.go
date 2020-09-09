@@ -213,7 +213,7 @@ func (m *Connector) UpsertListMember(tidepoolID string, role string, newEmail st
 	}
 	data := CreateData{
 		"updateOnly",
-		"tidepoolID",
+		"id",
 		[]Input{
 			{id, tidepoolID, newEmail, role, boolean, boolean},
 		},

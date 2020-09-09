@@ -77,6 +77,7 @@ func (a *Api) reader(ctx context.Context, topic string, broker string, partition
 		var message map[string]interface{}
 		m, err := r.ReadMessage(context.Background())
 		if err != nil {
+			log.Println("Error reading kafka message. Breaking out")
 			break
 		}
 		if err := json.Unmarshal(m.Value, &message); err != nil {
@@ -101,6 +102,7 @@ func (a *Api) reader(ctx context.Context, topic string, broker string, partition
 				a.marketoUpdate(ctx, message, topic, newUser)
 			}
 			if message["event"] == "update-user" {
+				log.Println(message)
 				// oldUserMessage := fmt.Sprintf("%v", message["user"])
 				// userFromDataBase, err := a.store.FindUser(ctx, oldUserMessage)
 				// if err != nil {
@@ -116,6 +118,7 @@ func (a *Api) reader(ctx context.Context, topic string, broker string, partition
 				a.marketoUpdate(ctx, message, topic, oldUser)
 			}
 			if message["event"] == "delete-user" {
+				log.Println(message)
 				// deletedUserMessage := fmt.Sprintf("%v", message["user"])
 				// userFromDataBase, err := a.store.FindUser(ctx, deletedUserMessage)
 				// if err != nil {
@@ -207,7 +210,7 @@ func main() {
 	log.Println("Finished sleep")
 
 	startTime := time.Now()
-	log.Printf("Connectiong to %v topic on %v broker", topics, broker)
+	log.Printf("Connecting to %v topic on %v broker", topics, broker)
 	for _, topic := range strings.Split(topics, ",") {
 		go a.reader(context.Background(), topic, broker, 0)
 	}
