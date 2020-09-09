@@ -154,10 +154,10 @@ func (a *Api) marketoUpdate(ctx context.Context, message map[string]interface{},
 		a.marketoManager.CreateListMembershipForUser(UserMessage, &user)
 	} else if message["event"] == "update-user" {
 		log.Printf("Updating user %v in marketo database", userFromDataBase.Username)
-		a.marketoManager.UpdateListMembershipForUser(UserMessage, &user, &user, false)
+		a.marketoManager.UpdateListMembershipForUser(UserMessage, &user, false)
 	} else if message["event"] == "delete-user" {
 		log.Printf("Removing user %v from email lists", userFromDataBase.Username)
-		a.marketoManager.UpdateListMembershipForUser(UserMessage, &user, &user, true)
+		a.marketoManager.UpdateListMembershipForUser(UserMessage, &user, true)
 	}
 }
 

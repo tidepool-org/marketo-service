@@ -303,17 +303,10 @@ func Test_CreateListMembershipForUser_NewUser_Match_Clinic(t *testing.T) {
 	}
 	time.Sleep(time.Second)
 }
-func Test_UpdateListMembershipForUser_OldUser_Missing(t *testing.T) {
-	manager := NewTestManagerWithClientMock(t)
-	newUserMock := NewUserMock()
-	manager.UpdateListMembershipForUser("testNumber", nil, newUserMock, false)
-	time.Sleep(time.Second)
-}
 
 func Test_UpdateListMembershipForUser_NewUser_Missing(t *testing.T) {
 	manager := NewTestManagerWithClientMock(t)
-	oldUserMock := NewUserMock()
-	manager.UpdateListMembershipForUser("testNumber", oldUserMock, nil, false)
+	manager.UpdateListMembershipForUser("testNumber", nil, false)
 	time.Sleep(time.Second)
 }
 
@@ -326,7 +319,7 @@ func Test_UpdateListMembershipForUser_NewUser_Match_Personal(t *testing.T) {
 	newUserMock := NewUserMock()
 	newUserMock.EmailStub = func() string { return "ten@sample.com" }
 	newUserMock.IsClinicStub = func() bool { return false }
-	s.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false)
+	s.UpdateListMembershipForUser("testNumber", newUserMock, false)
 	user := s.TypeForUser(newUserMock)
 	if user != "user" {
 		t.Errorf("Expected '%v', got 'clinic'", user)
@@ -343,7 +336,7 @@ func Test_UpdateListMembershipForUser_NewUser_Match_Clinic(t *testing.T) {
 	newUserMock := NewUserMock()
 	newUserMock.EmailStub = func() string { return "eleven@sample.com" }
 	newUserMock.IsClinicStub = func() bool { return true }
-	s.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false)
+	s.UpdateListMembershipForUser("testNumber", newUserMock, false)
 	user := s.TypeForUser(newUserMock)
 	if user != "clinic" {
 		t.Errorf("Expected '%v', got 'user'", user)
@@ -357,7 +350,7 @@ func Test_UpdateListMembershipForUser_NewUser_Email_Missing(t *testing.T) {
 	oldUserMock.EmailStub = func() string { return "twelve@sample.com" }
 	newUserMock := NewUserMock()
 	newUserMock.EmailStub = func() string { return "" }
-	manager.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false)
+	manager.UpdateListMembershipForUser("testNumber", newUserMock, false)
 	time.Sleep(time.Second)
 }
 
@@ -367,7 +360,7 @@ func Test_UpdateListMembershipForUser_NewUser_Email_Tidepool_Io(t *testing.T) {
 	oldUserMock.EmailStub = func() string { return "twelve@sample.com" }
 	newUserMock := NewUserMock()
 	newUserMock.EmailStub = func() string { return "test@tidepool.io" }
-	manager.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false)
+	manager.UpdateListMembershipForUser("testNumber", newUserMock, false)
 	time.Sleep(time.Second)
 }
 
@@ -377,7 +370,7 @@ func Test_UpdateListMembershipForUser_NewUser_Email_Tidepool_Org(t *testing.T) {
 	oldUserMock.EmailStub = func() string { return "twelve@sample.com" }
 	newUserMock := NewUserMock()
 	newUserMock.EmailStub = func() string { return "test@tidepool.org" }
-	manager.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false)
+	manager.UpdateListMembershipForUser("testNumber", newUserMock, false)
 	time.Sleep(time.Second)
 }
 
@@ -423,7 +416,6 @@ func Test_UpdateListMember(t *testing.T) {
 		"success":true
 	}`
 	path := "/rest/v1/leads.json"
-	email := "tester@example.com"
 	newEmail := "newtester@example.com"
 	userType := "clinic"
 	called := 0
@@ -501,7 +493,7 @@ func Test_UpdateListMember(t *testing.T) {
 	config := NewTestConfig(t, ts)
 	manager, _ := marketo.NewManager(logger, config)
 	var s = manager.(*marketo.Connector)
-	var addOrUpdateMember = s.UpsertListMember("testNumber", userType, email, newEmail, false)
+	var addOrUpdateMember = s.UpsertListMember("testNumber", userType, newEmail, false)
 	if addOrUpdateMember != nil {
 		t.Error("Expected nil, returned not nil")
 	}
@@ -513,7 +505,6 @@ func Test_CreateListMember(t *testing.T) {
 		"success":true
 	}`
 	path := "/rest/v1/leads.json"
-	email := "tester@example.com"
 	newEmail := "newtester@example.com"
 	userType := "user"
 	called := 0
@@ -591,7 +582,7 @@ func Test_CreateListMember(t *testing.T) {
 	config := NewTestConfig(t, ts)
 	manager, _ := marketo.NewManager(logger, config)
 	var s = manager.(*marketo.Connector)
-	var addOrUpdateMember = s.UpsertListMember("testNumber", userType, email, newEmail, false)
+	var addOrUpdateMember = s.UpsertListMember("testNumber", userType, newEmail, false)
 	if addOrUpdateMember != nil {
 		t.Error("Expected nil, returned not nil")
 	}
