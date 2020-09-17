@@ -173,7 +173,9 @@ func main() {
 	clientStore.EnsureIndexes()
 
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	topics, _ := os.LookupEnv("KAFKA_TOPIC")
+	prefix, _ := os.LookupEnv("KAFKA_PREFIX")
+	topic, _ := os.LookupEnv("KAFKA_TOPIC")
+	topicWithPrefix := prefix + topic
 	broker, _ := os.LookupEnv("KAFKA_BROKERS")
 	config.Marketo.ID, _ = os.LookupEnv("MARKETO_ID")
 	config.Marketo.URL, _ = os.LookupEnv("MARKETO_URL")
@@ -208,8 +210,8 @@ func main() {
 	log.Println("Finished sleep")
 
 	startTime := time.Now()
-	log.Printf("Connecting to %v topic on %v broker", topics, broker)
-	for _, topic := range strings.Split(topics, ",") {
+	log.Printf("Connecting to %v topic on %v broker", topicWithPrefix, broker)
+	for _, topic := range strings.Split(topicWithPrefix, ",") {
 		go a.reader(context.Background(), topic, broker)
 	}
 
