@@ -83,53 +83,24 @@ func (a *Api) reader(ctx context.Context, topic string, broker string) {
 		} else {
 			log.Println(message)
 			if message["event"] == "create-user" {
-				// newUserMessage := fmt.Sprintf("%v", message["user"])
-				// log.Println(newUserMessage)
-				// userFromDataBase, err := a.store.FindUser(ctx, newUserMessage)
-				// if err != nil {
-				// 	log.Println(err)
-				// 	return
-				// }
-				// userFromDataBaseBytes, _ := json.Marshal(userFromDataBase)
-				// if err := json.Unmarshal(userFromDataBaseBytes, &newUser); err != nil {
-				// 	log.Println(topic, "Error Unmarshalling New User", err)
-				// } else {
-				// 	a.marketoManager.CreateListMembershipForUser(&newUser)
-				// }
 				log.Println(newUser)
 				a.marketoUpdate(ctx, message, topic, newUser)
 			}
 			if message["event"] == "update-user" {
 				log.Println(message)
-				// oldUserMessage := fmt.Sprintf("%v", message["user"])
-				// userFromDataBase, err := a.store.FindUser(ctx, oldUserMessage)
-				// if err != nil {
-				// 	log.Println(err)
-				// 	return
-				// }
-				// userFromDataBaseBytes, _ := json.Marshal(userFromDataBase)
-				// if err := json.Unmarshal(userFromDataBaseBytes, &oldUser); err != nil {
-				// 	log.Println(topic, "Error Unmarshalling Old User", err)
-				// } else {
-				// 	a.marketoManager.UpdateListMembershipForUser(&oldUser, &oldUser, false)
-				// }
 				a.marketoUpdate(ctx, message, topic, oldUser)
 			}
 			if message["event"] == "delete-user" {
 				log.Println(message)
-				// deletedUserMessage := fmt.Sprintf("%v", message["user"])
-				// userFromDataBase, err := a.store.FindUser(ctx, deletedUserMessage)
-				// if err != nil {
-				// 	log.Println(err)
-				// 	return
-				// }
-				// userFromDataBaseBytes, _ := json.Marshal(userFromDataBase)
-				// if err := json.Unmarshal(userFromDataBaseBytes, &deletedUser); err != nil {
-				// 	log.Println(topic, "Error Unmarshalling New User", err)
-				// } else {
-				// 	a.marketoManager.UpdateListMembershipForUser(&oldUser, &oldUser, true)
-				// }
-				a.marketoUpdate(ctx, message, topic, deletedUser)
+				deletedUserID := fmt.Sprintf("%v", message["user"])
+				deletedUserEmail := fmt.Sprintf("%v", message["email"])
+				deletedUserRole := fmt.Sprintf("%v", message["role"])
+				deletedUser.Id = deletedUserID
+				deletedUser.Username = deletedUserEmail
+				deletedUser.Roles[0] = deletedUserRole
+				log.Printf("%v", deletedUser)
+		
+				a.marketoManager.UpdateListMembershipForUser(deletedUserID, &deletedUser, true)	
 			}
 			log.Printf("message at offset %d: %s = %s\n", m.Offset, string(m.Key), string(m.Value))
 		}
@@ -156,10 +127,7 @@ func (a *Api) marketoUpdate(ctx context.Context, message map[string]interface{},
 	} else if message["event"] == "update-user" {
 		log.Printf("Updating user %v in marketo database", userFromDataBase.Username)
 		a.marketoManager.UpdateListMembershipForUser(UserMessage, &user, false)
-	} else if message["event"] == "delete-user" {
-		log.Printf("Removing user %v from email lists", userFromDataBase.Username)
-		a.marketoManager.UpdateListMembershipForUser(UserMessage, &user, true)
-	}
+	} 
 }
 
 func main() {
