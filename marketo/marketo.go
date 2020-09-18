@@ -22,7 +22,7 @@ type User interface {
 // Manager interface for managing leads
 type Manager interface {
 	CreateListMembershipForUser(tidepoolID string, newUser User)
-	UpdateListMembershipForUser(tidepoolID string, newUser User, boolean bool)
+	UpdateListMembershipForUser(tidepoolID string, newUser User, delete bool)
 	IsAvailable() bool
 }
 
@@ -176,18 +176,18 @@ func (m *Connector) CreateListMembershipForUser(tidepoolID string, newUser User)
 }
 
 // UpdateListMembershipForUser is an asynchronous function that updates a user
-func (m *Connector) UpdateListMembershipForUser(tidepoolID string, newUser User, boolean bool) {
+func (m *Connector) UpdateListMembershipForUser(tidepoolID string, newUser User, delete bool) {
 	m.logger.Printf("UpdateListMembershipForUser %v", newUser)
 	if newUser == nil {
 		m.logger.Printf("nil user")
 		return
 	}
 
-	m.UpsertListMembership(tidepoolID, newUser, boolean)
+	m.UpsertListMembership(tidepoolID, newUser, delete)
 }
 
 // UpsertListMembership creates or updates a user depending on if the user already exists or not
-func (m *Connector) UpsertListMembership(tidepoolID string, newUser User, boolean bool) error {
+func (m *Connector) UpsertListMembership(tidepoolID string, newUser User, delete bool) error {
 	newEmail := strings.ToLower(newUser.Email())
 	if newEmail == "" {
 		m.logger.Printf("empty email")
@@ -198,7 +198,7 @@ func (m *Connector) UpsertListMembership(tidepoolID string, newUser User, boolea
 		return nil
 	}
 
-	if err := m.UpsertListMember(tidepoolID, m.TypeForUser(newUser), newEmail, boolean); err != nil {
+	if err := m.UpsertListMember(tidepoolID, m.TypeForUser(newUser), newEmail, delete); err != nil {
 		m.logger.Printf(`ERROR: marketo failure upserting member "%s" to "%s"; %s`, tidepoolID, newEmail, err)
 		return err
 	}
@@ -206,7 +206,7 @@ func (m *Connector) UpsertListMembership(tidepoolID string, newUser User, boolea
 }
 
 // UpsertListMember creates or updates lead based on if lead already exists
-func (m *Connector) UpsertListMember(tidepoolID string, role string, newEmail string, boolean bool) error {
+func (m *Connector) UpsertListMember(tidepoolID string, role string, newEmail string, delete bool) error {
 	id, exists, err := m.FindLead(tidepoolID)
 	if err != nil {
 		return fmt.Errorf("marketo: could not find a lead %v", err)
@@ -215,7 +215,7 @@ func (m *Connector) UpsertListMember(tidepoolID string, role string, newEmail st
 		"updateOnly",
 		"id",
 		[]Input{
-			{id, tidepoolID, newEmail, role, boolean, boolean},
+			{id, tidepoolID, newEmail, role, delete, delete},
 		},
 	}
 	if !exists {
@@ -223,7 +223,7 @@ func (m *Connector) UpsertListMember(tidepoolID string, role string, newEmail st
 			"createOnly",
 			"tidepoolID",
 			[]Input{
-				{0, tidepoolID, newEmail, role, boolean, boolean},
+				{0, tidepoolID, newEmail, role, delete, delete},
 			},
 		}
 	}
