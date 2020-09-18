@@ -95,9 +95,10 @@ func (a *Api) reader(ctx context.Context, topic string, broker string) {
 				deletedUserID := fmt.Sprintf("%v", message["user"])
 				deletedUserEmail := fmt.Sprintf("%v", message["email"])
 				deletedUserRole := fmt.Sprintf("%v", message["role"])
+				deletedUserRoleSlice := []string{deletedUserRole}
 				deletedUser.Id = deletedUserID
 				deletedUser.Username = deletedUserEmail
-				deletedUser.Roles[0] = deletedUserRole
+				deletedUser.Roles = deletedUserRoleSlice
 				log.Printf("%v", deletedUser)
 		
 				a.marketoManager.UpdateListMembershipForUser(deletedUserID, &deletedUser, true)	
