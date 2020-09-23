@@ -101,9 +101,10 @@ func (a *Api) reader(ctx context.Context, topic string, broker string) {
 					deletedUserRoleSlice := []string{deletedUserRole}
 					deletedUser.Roles = deletedUserRoleSlice
 				}
-				log.Printf("%v", deletedUser)
-		
-				a.marketoManager.UpdateListMembershipForUser(deletedUserID, &deletedUser, true)	
+				if !strings.HasSuffix(deletedUserEmail, "@tidepool.io") && !strings.HasSuffix(deletedUserEmail, "@tidepool.org") {
+					log.Printf("%v", deletedUser)
+					a.marketoManager.UpdateListMembershipForUser(deletedUserID, &deletedUser, true)	
+				}
 			}
 			log.Printf("message at offset %d: %s = %s\n", m.Offset, string(m.Key), string(m.Value))
 		}
