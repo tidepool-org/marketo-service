@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/tidepool-org/go-common/clients/shoreline"
 	"log"
 	"net/url"
 	"strings"
@@ -13,16 +14,10 @@ import (
 
 const path = "/rest/v1/leads.json?"
 
-// User interface for Identifying user type. function located in user.go
-type User interface {
-	Email() string
-	IsClinic() bool
-}
-
 // Manager interface for managing leads
 type Manager interface {
-	CreateListMembershipForUser(tidepoolID string, newUser User)
-	UpdateListMembershipForUser(tidepoolID string, newUser User, delete bool)
+	CreateListMembershipForUser(tidepoolID string, newUser shoreline.UserData)
+	UpdateListMembershipForUser(tidepoolID string, newUser shoreline.UserData, delete bool)
 	IsAvailable() bool
 }
 
@@ -165,30 +160,20 @@ func NewManager(logger *log.Logger, config Config) (Manager, error) {
 }
 
 // CreateListMembershipForUser is an asynchronous function that creates a user
-func (m *Connector) CreateListMembershipForUser(tidepoolID string, newUser User) {
+func (m *Connector) CreateListMembershipForUser(tidepoolID string, newUser shoreline.UserData) {
 	m.logger.Printf("CreateListMembershipForUser %v", newUser)
-	if newUser == nil {
-		m.logger.Printf("nil user")
-		return
-	}
-
 	m.UpsertListMembership(tidepoolID, newUser, false)
 }
 
 // UpdateListMembershipForUser is an asynchronous function that updates a user
-func (m *Connector) UpdateListMembershipForUser(tidepoolID string, newUser User, delete bool) {
+func (m *Connector) UpdateListMembershipForUser(tidepoolID string, newUser shoreline.UserData, delete bool) {
 	m.logger.Printf("UpdateListMembershipForUser %v", newUser)
-	if newUser == nil {
-		m.logger.Printf("nil user")
-		return
-	}
-
 	m.UpsertListMembership(tidepoolID, newUser, delete)
 }
 
 // UpsertListMembership creates or updates a user depending on if the user already exists or not
-func (m *Connector) UpsertListMembership(tidepoolID string, newUser User, delete bool) error {
-	newEmail := strings.ToLower(newUser.Email())
+func (m *Connector) UpsertListMembership(tidepoolID string, newUser shoreline.UserData, delete bool) error {
+	newEmail := strings.ToLower(newUser.Username)
 	if newEmail == "" {
 		m.logger.Printf("empty email")
 		return nil
@@ -276,15 +261,15 @@ func (m *Connector) FindLead(tidepoolID string) (int, bool, error) {
 }
 
 // TypeForUser Identifies if the user is a clinic or patient
-func (m *Connector) TypeForUser(user User) string {
+func (m *Connector) TypeForUser(user shoreline.UserData) string {
 	if user.IsClinic() {
 		return m.config.ClinicRole
 	}
 	return m.config.PatientRole
 }
 
-func matchUsers(oldUser User, newUser User) bool {
-	return oldUser != nil && newUser != nil && oldUser.Email() == newUser.Email() && oldUser.IsClinic() == newUser.IsClinic()
+func matchUsers(oldUser shoreline.UserData, newUser shoreline.UserData) bool {
+	return oldUser.Username == newUser.Username && oldUser.IsClinic() == newUser.IsClinic()
 }
 
 func hasTidepoolDomain(email string) bool {
