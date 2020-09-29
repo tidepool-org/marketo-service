@@ -13,16 +13,17 @@ type UserEventsHandler struct {
 	MarketoManager marketo.Manager
 }
 
-func (u *UserEventsHandler) HandleCreateUserEvent(payload events.CreateUserEvent) {
-	log.Printf("Received create user event: %v", payload)
-	u.MarketoManager.CreateListMembershipForUser(payload.UserID, payload.UserData)
+func (u *UserEventsHandler) HandleCreateUserEvent(event events.CreateUserEvent) {
+	log.Printf("Received create user event: %v", event)
+	u.MarketoManager.CreateListMembershipForUser(event.UserID, event.UserData)
 }
 
-func (u *UserEventsHandler) HandleUpdateUserEvent(payload events.UpdateUserEvent) {
-	u.MarketoManager.UpdateListMembershipForUser(payload.Updated.UserID, payload.Updated, false)
+func (u *UserEventsHandler) HandleUpdateUserEvent(event events.UpdateUserEvent) {
+	log.Printf("Received update user event: %v", event)
+	u.MarketoManager.UpdateListMembershipForUser(event.Updated.UserID, event.Updated, false)
 }
 
-func (u *UserEventsHandler) HandleDeleteUserEvent(payload events.DeleteUserEvent) {
-	log.Printf("Received delete user event: %v", payload)
-	u.MarketoManager.UpdateListMembershipForUser(payload.UserID, payload.UserData, true)
+func (u *UserEventsHandler) HandleDeleteUserEvent(event events.DeleteUserEvent) {
+	log.Printf("Received delete user event: %v", event)
+	u.MarketoManager.UpdateListMembershipForUser(event.UserID, event.UserData, true)
 }

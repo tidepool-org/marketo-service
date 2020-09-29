@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"github.com/Shopify/sarama"
+	"github.com/tidepool-org/go-common/errors"
 	"github.com/tidepool-org/go-common/events"
-	"github.com/tidepool-org/marketo-service/handler"
 	"github.com/tidepool-org/marketo-service/marketo"
 	"log"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 )
 
 type Config struct {
@@ -16,7 +19,7 @@ type Config struct {
 
 func main() {
 	var config Config
-	logger := log.New(os.Stdout, "api/user", log.LstdFlags|log.Lshortfile)
+	logger := log.New(os.Stdout, "marketo-service", log.LstdFlags|log.Lshortfile)
 	config.Marketo.ID, _ = os.LookupEnv("MARKETO_ID")
 	config.Marketo.URL, _ = os.LookupEnv("MARKETO_URL")
 	config.Marketo.Secret, _ = os.LookupEnv("MARKETO_SECRET")
@@ -32,35 +35,49 @@ func main() {
 		config.Marketo.Timeout = parsedTimeout
 	}
 
-	var marketoManager marketo.Manager
+	var _ marketo.Manager
 	if err := config.Marketo.Validate(); err != nil {
-		log.Fatalf("WARNING: Marketo config is invalid: %v", err)
+		//log.Fatalf("WARNING: Marketo config is invalid: %v", err)
 	} else {
 		log.Print("initializing marketo manager")
-		marketoManager, _ = marketo.NewManager(logger, config.Marketo)
+		_, _ = marketo.NewManager(logger, config.Marketo)
 	}
 
-	kafkaConfig := &events.KafkaConfig{}
-	if err := kafkaConfig.LoadFromEnv(); err != nil {
+	cloudEventsConfig := events.NewConfig()
+	if err := cloudEventsConfig.LoadFromEnv(); err != nil {
 		log.Fatalln(err)
 	}
-	consumer, err := events.NewKafkaCloudEventsConsumer(kafkaConfig)
+
+	cloudEventsConfig.SaramaConfig.Version = sarama.V2_4_0_0
+	cloudEventsConfig.SaramaConfig.Net.TLS.Enable = true
+	cloudEventsConfig.SaramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
+
+	consumer, err := events.NewKafkaCloudEventsConsumer(cloudEventsConfig)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Println("created consumer")
-	userEventsHandler := events.NewUserEventsHandler(&handler.UserEventsHandler{
-		MarketoManager: marketoManager,
-	})
-	consumer.RegisterHandler(userEventsHandler)
+	//userEventsHandler := events.NewUserEventsHandler(&handler.UserEventsHandler{
+	//	MarketoManager: marketoManager,
+	//})
+	//consumer.RegisterHandler(userEventsHandler)
 	consumer.RegisterHandler(&events.DebugEventHandler{})
 
-	// Loop indefinitely
-	for {
-		// blocks until context is terminated or kafka returns EOF.
-		// When Kafka returns EOF, the error return by the function is nil.
-		if err := consumer.Start(context.Background()); err != nil {
-			log.Fatalln(err)
-		}
+	// listen to signals to stop consumer
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	// convert to cancel on context that server listens to
+	go func(stop chan os.Signal, cancelFunc context.CancelFunc) {
+		<-stop
+		log.Println("SIGINT or SIGTERM received. Shutting down consumer")
+		cancelFunc()
+	}(stop, cancelFunc)
+
+	err = consumer.Start(ctx)
+	if  err != nil {
+		log.Fatalln(errors.Wrap(err, "Unable to start consumer"))
+	} else {
+		log.Println("Consumer stopped")
 	}
 }
