@@ -13,17 +13,20 @@ type UserEventsHandler struct {
 	MarketoManager marketo.Manager
 }
 
-func (u *UserEventsHandler) HandleCreateUserEvent(event events.CreateUserEvent) {
+func (u *UserEventsHandler) HandleCreateUserEvent(event events.CreateUserEvent) error {
 	log.Printf("Received create user event: %v", event)
 	u.MarketoManager.CreateListMembershipForUser(event.UserID, event.UserData)
+	return nil
 }
 
-func (u *UserEventsHandler) HandleUpdateUserEvent(event events.UpdateUserEvent) {
+func (u *UserEventsHandler) HandleUpdateUserEvent(event events.UpdateUserEvent) error {
 	log.Printf("Received update user event: %v", event)
 	u.MarketoManager.UpdateListMembershipForUser(event.Updated.UserID, event.Updated, false)
+	return nil
 }
 
-func (u *UserEventsHandler) HandleDeleteUserEvent(event events.DeleteUserEvent) {
+func (u *UserEventsHandler) HandleDeleteUserEvent(event events.DeleteUserEvent) error {
 	log.Printf("Received delete user event: %v", event)
 	u.MarketoManager.UpdateListMembershipForUser(event.UserID, event.UserData, true)
+	return nil
 }
