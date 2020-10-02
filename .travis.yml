@@ -10,6 +10,7 @@ env:
 
 script:
   - ./build.sh
+  - ./test.sh
   - ./artifact.sh
 
 services:
