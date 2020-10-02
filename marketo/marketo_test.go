@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -14,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tidepool-org/go-common/clients/shoreline"
 	"github.com/tidepool-org/marketo-service/marketo"
 )
 
@@ -167,14 +167,14 @@ func Test_NewManager_Success(t *testing.T) {
 
 func Test_CreateListMembershipForUser_User_Missing(t *testing.T) {
 	manager := NewTestManagerWithClientMock(t)
-	manager.CreateListMembershipForUser("testNumber", nil)
+	manager.CreateListMembershipForUser("testNumber", shoreline.UserData{})
 	time.Sleep(time.Second)
 }
 
 func Test_CreateListMembershipForUser_User_Email_Missing(t *testing.T) {
 	manager := NewTestManagerWithClientMock(t)
 	newUserMock := NewUserMock()
-	newUserMock.EmailStub = func() string { return "" }
+	newUserMock.Username = ""
 	manager.CreateListMembershipForUser("testNumber", newUserMock)
 	time.Sleep(time.Second)
 }
@@ -182,7 +182,7 @@ func Test_CreateListMembershipForUser_User_Email_Missing(t *testing.T) {
 func Test_CreateListMembershipForUser_User_Email_Tidepool_Io(t *testing.T) {
 	manager := NewTestManagerWithClientMock(t)
 	newUserMock := NewUserMock()
-	newUserMock.EmailStub = func() string { return "test@tidepool.io" }
+	newUserMock.Username = "test@tidepool.io"
 	manager.CreateListMembershipForUser("testNumber", newUserMock)
 	time.Sleep(time.Second)
 }
@@ -190,7 +190,7 @@ func Test_CreateListMembershipForUser_User_Email_Tidepool_Io(t *testing.T) {
 func Test_CreateListMembershipForUser_User_Email_Tidepool_Org(t *testing.T) {
 	manager := NewTestManagerWithClientMock(t)
 	newUserMock := NewUserMock()
-	newUserMock.EmailStub = func() string { return "test@tidepool.org" }
+	newUserMock.Username = "test@tidepool.org"
 	manager.CreateListMembershipForUser("testNumber", newUserMock)
 	time.Sleep(time.Second)
 }
@@ -225,8 +225,8 @@ func Test_CreateListMembershipForUser_NewUser_Match_Personal(t *testing.T) {
 				t.Errorf("Error parsing query params: %v", err)
 			}
 			checkParam(t, params, "fields", "email,id")
-			checkParam(t, params, "filterType", "email")
-			checkParam(t, params, "filterValues", "tester@example.com")
+			checkParam(t, params, "filterType", "tidepoolID")
+			checkParam(t, params, "filterValues", "testNumber")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -240,8 +240,8 @@ func Test_CreateListMembershipForUser_NewUser_Match_Personal(t *testing.T) {
 	manager, _ := marketo.NewManager(logger, config)
 	var s = manager.(*marketo.Connector)
 	newUserMock := NewUserMock()
-	newUserMock.EmailStub = func() string { return "tester@example.com" }
-	newUserMock.IsClinicStub = func() bool { return false }
+	newUserMock.Username = "tester@example.com"
+	newUserMock.Roles = nil
 	s.CreateListMembershipForUser("testNumber", newUserMock)
 	user := s.TypeForUser(newUserMock)
 	if user != "user" {
@@ -279,8 +279,8 @@ func Test_CreateListMembershipForUser_NewUser_Match_Clinic(t *testing.T) {
 				t.Errorf("Error parsing query params: %v", err)
 			}
 			checkParam(t, params, "fields", "email,id")
-			checkParam(t, params, "filterType", "email")
-			checkParam(t, params, "filterValues", "tester@example.com")
+			checkParam(t, params, "filterType", "tidepoolID")
+			checkParam(t, params, "filterValues", "testNumber")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -294,8 +294,8 @@ func Test_CreateListMembershipForUser_NewUser_Match_Clinic(t *testing.T) {
 	manager, _ := marketo.NewManager(logger, config)
 	var s = manager.(*marketo.Connector)
 	newUserMock := NewUserMock()
-	newUserMock.EmailStub = func() string { return "tester@example.com" }
-	newUserMock.IsClinicStub = func() bool { return true }
+	newUserMock.Username = "tester@example.com"
+	newUserMock.Roles = []string{"clinic"}
 	s.CreateListMembershipForUser("testNumber", newUserMock)
 	user := s.TypeForUser(newUserMock)
 	if user != "clinic" {
@@ -306,7 +306,7 @@ func Test_CreateListMembershipForUser_NewUser_Match_Clinic(t *testing.T) {
 
 func Test_UpdateListMembershipForUser_NewUser_Missing(t *testing.T) {
 	manager := NewTestManagerWithClientMock(t)
-	manager.UpdateListMembershipForUser("testNumber", nil, false)
+	manager.UpdateListMembershipForUser("testNumber", shoreline.UserData{}, false)
 	time.Sleep(time.Second)
 }
 
@@ -314,11 +314,11 @@ func Test_UpdateListMembershipForUser_NewUser_Match_Personal(t *testing.T) {
 	manager := NewTestManagerWithClientMock(t)
 	var s = manager.(*marketo.Connector)
 	oldUserMock := NewUserMock()
-	oldUserMock.EmailStub = func() string { return "ten@sample.com" }
-	oldUserMock.IsClinicStub = func() bool { return false }
+	oldUserMock.Username = "ten@sample.com"
+	oldUserMock.Roles = nil
 	newUserMock := NewUserMock()
-	newUserMock.EmailStub = func() string { return "ten@sample.com" }
-	newUserMock.IsClinicStub = func() bool { return false }
+	newUserMock.Username = "ten@sample.com"
+	newUserMock.Roles = nil
 	s.UpdateListMembershipForUser("testNumber", newUserMock, false)
 	user := s.TypeForUser(newUserMock)
 	if user != "user" {
@@ -331,11 +331,11 @@ func Test_UpdateListMembershipForUser_NewUser_Match_Clinic(t *testing.T) {
 	manager := NewTestManagerWithClientMock(t)
 	var s = manager.(*marketo.Connector)
 	oldUserMock := NewUserMock()
-	oldUserMock.EmailStub = func() string { return "eleven@sample.com" }
-	oldUserMock.IsClinicStub = func() bool { return true }
+	oldUserMock.Username = "eleven@sample.com"
+	oldUserMock.Roles = []string{"clinic"}
 	newUserMock := NewUserMock()
-	newUserMock.EmailStub = func() string { return "eleven@sample.com" }
-	newUserMock.IsClinicStub = func() bool { return true }
+	newUserMock.Username = "eleven@sample.com"
+	newUserMock.Roles = []string{"clinic"}
 	s.UpdateListMembershipForUser("testNumber", newUserMock, false)
 	user := s.TypeForUser(newUserMock)
 	if user != "clinic" {
@@ -347,9 +347,9 @@ func Test_UpdateListMembershipForUser_NewUser_Match_Clinic(t *testing.T) {
 func Test_UpdateListMembershipForUser_NewUser_Email_Missing(t *testing.T) {
 	manager := NewTestManagerWithClientMock(t)
 	oldUserMock := NewUserMock()
-	oldUserMock.EmailStub = func() string { return "twelve@sample.com" }
+	oldUserMock.Username = "twelve@sample.com"
 	newUserMock := NewUserMock()
-	newUserMock.EmailStub = func() string { return "" }
+	newUserMock.Username = ""
 	manager.UpdateListMembershipForUser("testNumber", newUserMock, false)
 	time.Sleep(time.Second)
 }
@@ -357,9 +357,9 @@ func Test_UpdateListMembershipForUser_NewUser_Email_Missing(t *testing.T) {
 func Test_UpdateListMembershipForUser_NewUser_Email_Tidepool_Io(t *testing.T) {
 	manager := NewTestManagerWithClientMock(t)
 	oldUserMock := NewUserMock()
-	oldUserMock.EmailStub = func() string { return "twelve@sample.com" }
+	oldUserMock.Username = "twelve@sample.com"
 	newUserMock := NewUserMock()
-	newUserMock.EmailStub = func() string { return "test@tidepool.io" }
+	newUserMock.Username = "test@tidepool.io"
 	manager.UpdateListMembershipForUser("testNumber", newUserMock, false)
 	time.Sleep(time.Second)
 }
@@ -367,9 +367,9 @@ func Test_UpdateListMembershipForUser_NewUser_Email_Tidepool_Io(t *testing.T) {
 func Test_UpdateListMembershipForUser_NewUser_Email_Tidepool_Org(t *testing.T) {
 	manager := NewTestManagerWithClientMock(t)
 	oldUserMock := NewUserMock()
-	oldUserMock.EmailStub = func() string { return "twelve@sample.com" }
+	oldUserMock.Username = "twelve@sample.com"
 	newUserMock := NewUserMock()
-	newUserMock.EmailStub = func() string { return "test@tidepool.org" }
+	newUserMock.Username = "test@tidepool.org"
 	manager.UpdateListMembershipForUser("testNumber", newUserMock, false)
 	time.Sleep(time.Second)
 }
@@ -412,7 +412,7 @@ type CreateLeadRequest struct {
 func Test_UpdateListMember(t *testing.T) {
 	getResponseSuccess := `{
 		"requestId":"1000",
-		"result":[{"id":23,"email":"tester@example.com"}],
+		"result":[{"id":23,"tidepoolID":"testNumber","email":"tester@example.com"}],
 		"success":true
 	}`
 	path := "/rest/v1/leads.json"
@@ -442,8 +442,8 @@ func Test_UpdateListMember(t *testing.T) {
 				t.Errorf("Error parsing query params: %v", err)
 			}
 			checkParam(t, params, "fields", "email,id")
-			checkParam(t, params, "filterType", "email")
-			checkParam(t, params, "filterValues", "tester@example.com")
+			checkParam(t, params, "filterType", "tidepoolID")
+			checkParam(t, params, "filterValues", "testNumber")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -531,8 +531,8 @@ func Test_CreateListMember(t *testing.T) {
 				t.Errorf("Error parsing query params: %v", err)
 			}
 			checkParam(t, params, "fields", "email,id")
-			checkParam(t, params, "filterType", "email")
-			checkParam(t, params, "filterValues", "tester@example.com")
+			checkParam(t, params, "filterType", "tidepoolID")
+			checkParam(t, params, "filterValues", "testNumber")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -565,8 +565,8 @@ func Test_CreateListMember(t *testing.T) {
 			if requestBody.Action != "createOnly" {
 				t.Errorf("Expected 'createOnly', got %s", requestBody.Action)
 			}
-			if requestBody.LookupField != "email" {
-				t.Errorf("Expected 'email', got %s", requestBody.LookupField)
+			if requestBody.LookupField != "tidepoolID" {
+				t.Errorf("Expected 'tidepoolID', got %s", requestBody.LookupField)
 			}
 			if requestBody.Input[0].Email != newEmail {
 				t.Errorf("Expected %s, got %s", newEmail, requestBody.Input[0].Email)
@@ -590,10 +590,10 @@ func Test_CreateListMember(t *testing.T) {
 func Test_FindLead(t *testing.T) {
 	getResponseSuccess := `{
 		"requestId":"1000",
-		"result":[{"id":23,"email":"tester@example.com"}],
+		"result":[{"id":23,"tidepoolID":"testNumber","email":"tester@example.com"}],
 		"success":true
 	}`
-	findLeadPath := "/rest/v1/leads.json?filterType=email&fields=email,id&filterValues=tester@example.com"
+	findLeadPath := "/rest/v1/leads.json?filterType=tidepoolID&fields=email,id&filterValues=testNumber"
 	called := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -611,9 +611,9 @@ func Test_FindLead(t *testing.T) {
 			if err != nil {
 				t.Errorf("Error parsing query params: %v", err)
 			}
-			checkParam(t, params, "filterType", "email")
+			checkParam(t, params, "filterType", "tidepoolID")
 			checkParam(t, params, "fields", "email,id")
-			checkParam(t, params, "filterValues", "tester@example.com")
+			checkParam(t, params, "filterValues", "testNumber")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -651,7 +651,7 @@ func Test_FindLead(t *testing.T) {
 	}
 }
 func Test_FindLeadWithNoBody(t *testing.T) {
-	invalidFindLeadPath := "/rest/v1leads.json?filterType=email&fields=email,id&filterValues=tester@example.com"
+	invalidFindLeadPath := "/rest/v1leads.json?filterType=tidepoolID&fields=email,id&filterValues=testNumber"
 	called := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -789,8 +789,8 @@ type UserMock struct {
 	IsClinicOutputs     []bool
 }
 
-func NewUserMock() *UserMock {
-	return &UserMock{id: rand.Int()}
+func NewUserMock() shoreline.UserData {
+	return shoreline.UserData{}
 }
 
 func (u *UserMock) Email() string {
