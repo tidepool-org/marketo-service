@@ -24,7 +24,7 @@ func (u *UserEventsHandler) HandleCreateUserEvent(event events.CreateUserEvent) 
 
 func (u *UserEventsHandler) HandleUpdateUserEvent(event events.UpdateUserEvent) error {
 	if event.Updated.EmailVerified && event.Updated.TermsAccepted != "" {
-		if !event.Original.EmailVerified && event.Original.TermsAccepted == "" {
+		if event.Original.TermsAccepted == "" {
 			log.Printf("Received create user event: %v", event)
 			u.MarketoManager.CreateListMembershipForUser(event.Updated.UserID, event.Updated)
 		} else {
