@@ -2,15 +2,17 @@ package main
 
 import (
 	"context"
-	"github.com/Shopify/sarama"
-	"github.com/tidepool-org/go-common/errors"
-	"github.com/tidepool-org/go-common/events"
-	"github.com/tidepool-org/marketo-service/marketo"
 	"log"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
+
+	"github.com/Shopify/sarama"
+	"github.com/tidepool-org/go-common/errors"
+	"github.com/tidepool-org/go-common/events"
+	"github.com/tidepool-org/marketo-service/handler"
+	"github.com/tidepool-org/marketo-service/marketo"
 )
 
 type Config struct {
@@ -35,12 +37,12 @@ func main() {
 		config.Marketo.Timeout = parsedTimeout
 	}
 
-	var _ marketo.Manager
+	var marketoManager marketo.Manager
 	if err := config.Marketo.Validate(); err != nil {
-		//log.Fatalf("WARNING: Marketo config is invalid: %v", err)
+		log.Fatalf("WARNING: Marketo config is invalid: %v", err)
 	} else {
 		log.Print("initializing marketo manager")
-		_, _ = marketo.NewManager(logger, config.Marketo)
+		marketoManager, _ = marketo.NewManager(logger, config.Marketo)
 	}
 
 	cloudEventsConfig := events.NewConfig()
@@ -56,10 +58,10 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	//userEventsHandler := events.NewUserEventsHandler(&handler.UserEventsHandler{
-	//	MarketoManager: marketoManager,
-	//})
-	//consumer.RegisterHandler(userEventsHandler)
+	userEventsHandler := events.NewUserEventsHandler(&handler.UserEventsHandler{
+		MarketoManager: marketoManager,
+	})
+	consumer.RegisterHandler(userEventsHandler)
 	consumer.RegisterHandler(&events.DebugEventHandler{})
 
 	// listen to signals to stop consumer
@@ -75,7 +77,7 @@ func main() {
 	}(stop, cancelFunc)
 
 	err = consumer.Start(ctx)
-	if  err != nil {
+	if err != nil {
 		log.Fatalln(errors.Wrap(err, "Unable to start consumer"))
 	} else {
 		log.Println("Consumer stopped")
