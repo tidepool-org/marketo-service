@@ -47,11 +47,12 @@ func main() {
 
 	cloudEventsConfig := events.NewConfig()
 	if err := cloudEventsConfig.LoadFromEnv(); err != nil {
+		logger.Println("error loading kafka config")
 		log.Fatalln(err)
 	}
 
-	cloudEventsConfig.SaramaConfig.Version = sarama.V2_4_0_0
-	cloudEventsConfig.SaramaConfig.Net.TLS.Enable = true
+	cloudEventsConfig.SaramaConfig.Version = sarama.V2_5_0_0
+	cloudEventsConfig.SaramaConfig.Net.TLS.Enable = cloudEventsConfig.KafkaRequireSSL
 	cloudEventsConfig.SaramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
 
 	consumer, err := events.NewKafkaCloudEventsConsumer(cloudEventsConfig)
