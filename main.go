@@ -51,10 +51,6 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	cloudEventsConfig.SaramaConfig.Version = sarama.V2_5_0_0
-	cloudEventsConfig.SaramaConfig.Net.TLS.Enable = cloudEventsConfig.KafkaRequireSSL
-	cloudEventsConfig.SaramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
-
 	consumer, err := events.NewKafkaCloudEventsConsumer(cloudEventsConfig)
 	if err != nil {
 		log.Fatalln(err)
