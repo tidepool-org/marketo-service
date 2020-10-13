@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/Shopify/sarama"
 	"github.com/tidepool-org/go-common/errors"
 	"github.com/tidepool-org/go-common/events"
 	"github.com/tidepool-org/marketo-service/handler"
