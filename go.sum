@@ -158,6 +158,8 @@ github.com/tidepool-org/go-common v0.6.3-0.20200929145753-410601a36eb5 h1:uxXRSa
 github.com/tidepool-org/go-common v0.6.3-0.20200929145753-410601a36eb5/go.mod h1:eTAksRRsQCXjW09sfCCP6CU2daBqWocnCRMYM0vhykw=
 github.com/tidepool-org/go-common v0.6.3-0.20201001200420-0bf25851089b h1:AL3lp4NmDScycK1LuLnHHAN5BbJb570//93SJhAIcXc=
 github.com/tidepool-org/go-common v0.6.3-0.20201001200420-0bf25851089b/go.mod h1:eTAksRRsQCXjW09sfCCP6CU2daBqWocnCRMYM0vhykw=
+github.com/tidepool-org/go-common v0.6.3-0.20201014125142-0883b62ba70a h1:t+uu5w28Ww0PObz+w9tHeeMk5kArH1+XN9oezXXyWuE=
+github.com/tidepool-org/go-common v0.6.3-0.20201014125142-0883b62ba70a/go.mod h1:P0mBFTCCEg3yzH8w4r257XyQXYj3q9Fpp/XETwwuW0c=
 github.com/tidwall/pretty v1.0.0 h1:HsD+QiTn7sK6flMKIvNmpqz1qrpP3Ps6jOKIKMooyg4=
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=
