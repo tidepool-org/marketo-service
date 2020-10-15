@@ -50,7 +50,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	consumer, err := events.NewKafkaCloudEventsConsumer(cloudEventsConfig)
+	consumer, err := events.NewSaramaCloudEventsConsumer(cloudEventsConfig)
 	if err != nil {
 		log.Fatalln(err)
 	}
