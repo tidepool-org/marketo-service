@@ -206,7 +206,7 @@ func (m *Connector) UpsertListMember(tidepoolID string, role string, newEmail st
 	if !exists {
 		data = CreateData{
 			"createOnly",
-			"tidepoolID",
+			"email",
 			[]Input{
 				{0, tidepoolID, newEmail, role, delete, delete},
 			},

@@ -225,8 +225,8 @@ func Test_CreateListMembershipForUser_NewUser_Match_Personal(t *testing.T) {
 				t.Errorf("Error parsing query params: %v", err)
 			}
 			checkParam(t, params, "fields", "email,id")
-			checkParam(t, params, "filterType", "tidepoolID")
-			checkParam(t, params, "filterValues", "testNumber")
+			checkParam(t, params, "filterType", "email")
+			checkParam(t, params, "filterValues", "tester@example.com")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -279,8 +279,8 @@ func Test_CreateListMembershipForUser_NewUser_Match_Clinic(t *testing.T) {
 				t.Errorf("Error parsing query params: %v", err)
 			}
 			checkParam(t, params, "fields", "email,id")
-			checkParam(t, params, "filterType", "tidepoolID")
-			checkParam(t, params, "filterValues", "testNumber")
+			checkParam(t, params, "filterType", "email")
+			checkParam(t, params, "filterValues", "tester@example.com")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -442,8 +442,8 @@ func Test_UpdateListMember(t *testing.T) {
 				t.Errorf("Error parsing query params: %v", err)
 			}
 			checkParam(t, params, "fields", "email,id")
-			checkParam(t, params, "filterType", "tidepoolID")
-			checkParam(t, params, "filterValues", "testNumber")
+			checkParam(t, params, "filterType", "email")
+			checkParam(t, params, "filterValues", "newtester@example.com")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -531,8 +531,8 @@ func Test_CreateListMember(t *testing.T) {
 				t.Errorf("Error parsing query params: %v", err)
 			}
 			checkParam(t, params, "fields", "email,id")
-			checkParam(t, params, "filterType", "tidepoolID")
-			checkParam(t, params, "filterValues", "testNumber")
+			checkParam(t, params, "filterType", "email")
+			checkParam(t, params, "filterValues", "newtester@example.com")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -565,8 +565,8 @@ func Test_CreateListMember(t *testing.T) {
 			if requestBody.Action != "createOnly" {
 				t.Errorf("Expected 'createOnly', got %s", requestBody.Action)
 			}
-			if requestBody.LookupField != "tidepoolID" {
-				t.Errorf("Expected 'tidepoolID', got %s", requestBody.LookupField)
+			if requestBody.LookupField != "email" {
+				t.Errorf("Expected 'email', got %s", requestBody.LookupField)
 			}
 			if requestBody.Input[0].Email != newEmail {
 				t.Errorf("Expected %s, got %s", newEmail, requestBody.Input[0].Email)
@@ -593,7 +593,7 @@ func Test_FindLead(t *testing.T) {
 		"result":[{"id":23,"tidepoolID":"testNumber","email":"tester@example.com"}],
 		"success":true
 	}`
-	findLeadPath := "/rest/v1/leads.json?filterType=tidepoolID&fields=email,id&filterValues=testNumber"
+	findLeadPath := "/rest/v1/leads.json?filterType=email&fields=email,id&filterValues=tester@example.com"
 	called := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -611,9 +611,9 @@ func Test_FindLead(t *testing.T) {
 			if err != nil {
 				t.Errorf("Error parsing query params: %v", err)
 			}
-			checkParam(t, params, "filterType", "tidepoolID")
+			checkParam(t, params, "filterType", "email")
 			checkParam(t, params, "fields", "email,id")
-			checkParam(t, params, "filterValues", "testNumber")
+			checkParam(t, params, "filterValues", "tester@example.com")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -651,7 +651,7 @@ func Test_FindLead(t *testing.T) {
 	}
 }
 func Test_FindLeadWithNoBody(t *testing.T) {
-	invalidFindLeadPath := "/rest/v1leads.json?filterType=tidepoolID&fields=email,id&filterValues=testNumber"
+	invalidFindLeadPath := "/rest/v1leads.json?filterType=email&fields=email,id&filterValues=tester@example.com"
 	called := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
