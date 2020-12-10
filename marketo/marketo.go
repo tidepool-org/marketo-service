@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/tidepool-org/go-common/clients/shoreline"
 	"log"
 	"net/url"
 	"strings"
+
+	"github.com/tidepool-org/go-common/clients/shoreline"
 
 	"github.com/SpeakData/minimarketo"
 )
@@ -17,7 +18,7 @@ const path = "/rest/v1/leads.json?"
 // Manager interface for managing leads
 type Manager interface {
 	CreateListMembershipForUser(tidepoolID string, newUser shoreline.UserData)
-	UpdateListMembershipForUser(tidepoolID string, newUser shoreline.UserData, delete bool)
+	UpdateListMembershipForUser(tidepoolID string, oldUser shoreline.UserData, newUser shoreline.UserData, delete bool)
 	IsAvailable() bool
 }
 
@@ -162,18 +163,19 @@ func NewManager(logger *log.Logger, config Config) (Manager, error) {
 // CreateListMembershipForUser is an asynchronous function that creates a user
 func (m *Connector) CreateListMembershipForUser(tidepoolID string, newUser shoreline.UserData) {
 	m.logger.Printf("CreateListMembershipForUser %v", newUser)
-	m.UpsertListMembership(tidepoolID, newUser, false)
+	m.UpsertListMembership(tidepoolID, newUser, newUser, false)
 }
 
 // UpdateListMembershipForUser is an asynchronous function that updates a user
-func (m *Connector) UpdateListMembershipForUser(tidepoolID string, newUser shoreline.UserData, delete bool) {
+func (m *Connector) UpdateListMembershipForUser(tidepoolID string, oldUser shoreline.UserData, newUser shoreline.UserData, delete bool) {
 	m.logger.Printf("UpdateListMembershipForUser %v", newUser)
-	m.UpsertListMembership(tidepoolID, newUser, delete)
+	m.UpsertListMembership(tidepoolID, oldUser, newUser, delete)
 }
 
 // UpsertListMembership creates or updates a user depending on if the user already exists or not
-func (m *Connector) UpsertListMembership(tidepoolID string, newUser shoreline.UserData, delete bool) error {
+func (m *Connector) UpsertListMembership(tidepoolID string, oldUser shoreline.UserData, newUser shoreline.UserData, delete bool) error {
 	newEmail := strings.ToLower(newUser.Username)
+	oldEmail := strings.ToLower(oldUser.Username)
 	if newEmail == "" {
 		m.logger.Printf("empty email")
 		return nil
@@ -183,7 +185,15 @@ func (m *Connector) UpsertListMembership(tidepoolID string, newUser shoreline.Us
 		return nil
 	}
 
-	if err := m.UpsertListMember(tidepoolID, m.TypeForUser(newUser), newEmail, delete); err != nil {
+	listEmail := ""
+	if oldEmail != "" {
+		listEmail = strings.ToLower(oldUser.Username)
+	}
+	if listEmail == "" {
+		listEmail = newEmail
+	}
+
+	if err := m.UpsertListMember(tidepoolID, m.TypeForUser(newUser), listEmail, newEmail, delete); err != nil {
 		m.logger.Printf(`ERROR: marketo failure upserting member "%s" to "%s"; %s`, tidepoolID, newEmail, err)
 		return err
 	}
@@ -191,8 +201,8 @@ func (m *Connector) UpsertListMembership(tidepoolID string, newUser shoreline.Us
 }
 
 // UpsertListMember creates or updates lead based on if lead already exists
-func (m *Connector) UpsertListMember(tidepoolID string, role string, newEmail string, delete bool) error {
-	id, exists, err := m.FindLead(newEmail)
+func (m *Connector) UpsertListMember(tidepoolID string, role string, listEmail string, newEmail string, delete bool) error {
+	id, exists, err := m.FindLead(listEmail)
 	if err != nil {
 		return fmt.Errorf("marketo: could not find a lead %v", err)
 	}
@@ -231,10 +241,10 @@ func (m *Connector) UpsertListMember(tidepoolID string, role string, newEmail st
 }
 
 // FindLead is used to find a lead in Marketo
-func (m *Connector) FindLead(newEmail string) (int, bool, error) {
+func (m *Connector) FindLead(listEmail string) (int, bool, error) {
 	v := url.Values{
 		"filterType":   {"email"},
-		"filterValues": {newEmail},
+		"filterValues": {listEmail},
 		"fields":       {"email,id"},
 	}
 	response, err := m.client.Get(path + v.Encode())

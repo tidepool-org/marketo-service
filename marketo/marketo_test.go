@@ -305,8 +305,18 @@ func Test_CreateListMembershipForUser_NewUser_Match_Clinic(t *testing.T) {
 }
 
 func Test_UpdateListMembershipForUser_NewUser_Missing(t *testing.T) {
+	oldUserMock := NewUserMock()
+	oldUserMock.Username = "ten@sample.com"
 	manager := NewTestManagerWithClientMock(t)
-	manager.UpdateListMembershipForUser("testNumber", shoreline.UserData{}, false)
+	manager.UpdateListMembershipForUser("testNumber", oldUserMock, shoreline.UserData{}, false)
+	time.Sleep(time.Second)
+}
+
+func Test_UpdateListMembershipForUser_OldUser_Missing(t *testing.T) {
+	newUserMock := NewUserMock()
+	newUserMock.Username = "ten@sample.com"
+	manager := NewTestManagerWithClientMock(t)
+	manager.UpdateListMembershipForUser("testNumber", shoreline.UserData{}, newUserMock, false)
 	time.Sleep(time.Second)
 }
 
@@ -319,7 +329,7 @@ func Test_UpdateListMembershipForUser_NewUser_Match_Personal(t *testing.T) {
 	newUserMock := NewUserMock()
 	newUserMock.Username = "ten@sample.com"
 	newUserMock.Roles = nil
-	s.UpdateListMembershipForUser("testNumber", newUserMock, false)
+	s.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false)
 	user := s.TypeForUser(newUserMock)
 	if user != "user" {
 		t.Errorf("Expected '%v', got 'clinic'", user)
@@ -336,7 +346,7 @@ func Test_UpdateListMembershipForUser_NewUser_Match_Clinic(t *testing.T) {
 	newUserMock := NewUserMock()
 	newUserMock.Username = "eleven@sample.com"
 	newUserMock.Roles = []string{"clinic"}
-	s.UpdateListMembershipForUser("testNumber", newUserMock, false)
+	s.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false)
 	user := s.TypeForUser(newUserMock)
 	if user != "clinic" {
 		t.Errorf("Expected '%v', got 'user'", user)
@@ -350,7 +360,7 @@ func Test_UpdateListMembershipForUser_NewUser_Email_Missing(t *testing.T) {
 	oldUserMock.Username = "twelve@sample.com"
 	newUserMock := NewUserMock()
 	newUserMock.Username = ""
-	manager.UpdateListMembershipForUser("testNumber", newUserMock, false)
+	manager.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false)
 	time.Sleep(time.Second)
 }
 
@@ -360,7 +370,7 @@ func Test_UpdateListMembershipForUser_NewUser_Email_Tidepool_Io(t *testing.T) {
 	oldUserMock.Username = "twelve@sample.com"
 	newUserMock := NewUserMock()
 	newUserMock.Username = "test@tidepool.io"
-	manager.UpdateListMembershipForUser("testNumber", newUserMock, false)
+	manager.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false)
 	time.Sleep(time.Second)
 }
 
@@ -370,7 +380,7 @@ func Test_UpdateListMembershipForUser_NewUser_Email_Tidepool_Org(t *testing.T) {
 	oldUserMock.Username = "twelve@sample.com"
 	newUserMock := NewUserMock()
 	newUserMock.Username = "test@tidepool.org"
-	manager.UpdateListMembershipForUser("testNumber", newUserMock, false)
+	manager.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false)
 	time.Sleep(time.Second)
 }
 
@@ -416,6 +426,7 @@ func Test_UpdateListMember(t *testing.T) {
 		"success":true
 	}`
 	path := "/rest/v1/leads.json"
+	oldEmail := "oldtester@example.com"
 	newEmail := "newtester@example.com"
 	userType := "clinic"
 	called := 0
@@ -443,7 +454,7 @@ func Test_UpdateListMember(t *testing.T) {
 			}
 			checkParam(t, params, "fields", "email,id")
 			checkParam(t, params, "filterType", "email")
-			checkParam(t, params, "filterValues", "newtester@example.com")
+			checkParam(t, params, "filterValues", "oldtester@example.com")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -493,7 +504,7 @@ func Test_UpdateListMember(t *testing.T) {
 	config := NewTestConfig(t, ts)
 	manager, _ := marketo.NewManager(logger, config)
 	var s = manager.(*marketo.Connector)
-	var addOrUpdateMember = s.UpsertListMember("testNumber", userType, newEmail, false)
+	var addOrUpdateMember = s.UpsertListMember("testNumber", userType, oldEmail, newEmail, false)
 	if addOrUpdateMember != nil {
 		t.Error("Expected nil, returned not nil")
 	}
@@ -506,6 +517,7 @@ func Test_CreateListMember(t *testing.T) {
 	}`
 	path := "/rest/v1/leads.json"
 	newEmail := "newtester@example.com"
+	oldEmail := "oldtester@example.com"
 	userType := "user"
 	called := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -532,7 +544,7 @@ func Test_CreateListMember(t *testing.T) {
 			}
 			checkParam(t, params, "fields", "email,id")
 			checkParam(t, params, "filterType", "email")
-			checkParam(t, params, "filterValues", "newtester@example.com")
+			checkParam(t, params, "filterValues", "oldtester@example.com")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -582,7 +594,7 @@ func Test_CreateListMember(t *testing.T) {
 	config := NewTestConfig(t, ts)
 	manager, _ := marketo.NewManager(logger, config)
 	var s = manager.(*marketo.Connector)
-	var addOrUpdateMember = s.UpsertListMember("testNumber", userType, newEmail, false)
+	var addOrUpdateMember = s.UpsertListMember("testNumber", userType, oldEmail, newEmail, false)
 	if addOrUpdateMember != nil {
 		t.Error("Expected nil, returned not nil")
 	}
