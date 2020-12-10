@@ -163,7 +163,7 @@ func NewManager(logger *log.Logger, config Config) (Manager, error) {
 // CreateListMembershipForUser is an asynchronous function that creates a user
 func (m *Connector) CreateListMembershipForUser(tidepoolID string, newUser shoreline.UserData) {
 	m.logger.Printf("CreateListMembershipForUser %v", newUser)
-	m.UpsertListMembership(tidepoolID, shoreline.UserData{}, newUser, false)
+	m.UpsertListMembership(tidepoolID, newUser, newUser, false)
 }
 
 // UpdateListMembershipForUser is an asynchronous function that updates a user
