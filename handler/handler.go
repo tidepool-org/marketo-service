@@ -3,6 +3,7 @@ package handler
 import (
 	"log"
 
+	"github.com/tidepool-org/go-common/clients/shoreline"
 	"github.com/tidepool-org/go-common/events"
 	"github.com/tidepool-org/marketo-service/marketo"
 )
@@ -29,7 +30,7 @@ func (u *UserEventsHandler) HandleUpdateUserEvent(event events.UpdateUserEvent) 
 			u.MarketoManager.CreateListMembershipForUser(event.Updated.UserID, event.Updated)
 		} else {
 			log.Printf("Received update user event: %v", event)
-			u.MarketoManager.UpdateListMembershipForUser(event.Updated.UserID, event.Updated, false)
+			u.MarketoManager.UpdateListMembershipForUser(event.Updated.UserID, event.Original, event.Updated, false)
 		}
 	}
 	return nil
@@ -37,6 +38,6 @@ func (u *UserEventsHandler) HandleUpdateUserEvent(event events.UpdateUserEvent) 
 
 func (u *UserEventsHandler) HandleDeleteUserEvent(event events.DeleteUserEvent) error {
 	log.Printf("Received delete user event: %v", event)
-	u.MarketoManager.UpdateListMembershipForUser(event.UserID, event.UserData, true)
+	u.MarketoManager.UpdateListMembershipForUser(event.UserID, shoreline.UserData{}, event.UserData, true)
 	return nil
 }
