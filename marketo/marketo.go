@@ -192,7 +192,7 @@ func (m *Connector) UpsertListMembership(tidepoolID string, newUser shoreline.Us
 
 // UpsertListMember creates or updates lead based on if lead already exists
 func (m *Connector) UpsertListMember(tidepoolID string, role string, newEmail string, delete bool) error {
-	id, exists, err := m.FindLead(tidepoolID)
+	id, exists, err := m.FindLead(newEmail)
 	if err != nil {
 		return fmt.Errorf("marketo: could not find a lead %v", err)
 	}
@@ -231,10 +231,10 @@ func (m *Connector) UpsertListMember(tidepoolID string, role string, newEmail st
 }
 
 // FindLead is used to find a lead in Marketo
-func (m *Connector) FindLead(tidepoolID string) (int, bool, error) {
+func (m *Connector) FindLead(newEmail string) (int, bool, error) {
 	v := url.Values{
-		"filterType":   {"tidepoolID"},
-		"filterValues": {tidepoolID},
+		"filterType":   {"email"},
+		"filterValues": {newEmail},
 		"fields":       {"email,id"},
 	}
 	response, err := m.client.Get(path + v.Encode())
