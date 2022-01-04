@@ -59,6 +59,11 @@ func (u *UserEventsHandler) RefreshUser(ctx context.Context, userId string) erro
 	if user == nil {
 		return nil
 	}
+	// The user hasn't verified their account.
+	// They'll be added to marketo later when the user object is updated.
+	if !user.EmailVerified || user.TermsAccepted == "" {
+		return nil
+	}
 	clinics, err := u.getClinicsForClinician(ctx, userId)
 	if err != nil {
 		return err

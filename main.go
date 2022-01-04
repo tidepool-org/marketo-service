@@ -2,24 +2,34 @@ package main
 
 import (
 	"context"
-	"log"
-	"os"
-	"os/signal"
-	"strconv"
-	"syscall"
-
+	"github.com/gorilla/mux"
 	"github.com/tidepool-org/go-common/errors"
 	"github.com/tidepool-org/go-common/events"
 	"github.com/tidepool-org/marketo-service/handler"
 	"github.com/tidepool-org/marketo-service/marketo"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"strconv"
+	"sync"
+	"syscall"
+	"time"
 )
 
 type Config struct {
-	Marketo marketo.Config `json:"marketo"`
+	Marketo       marketo.Config `json:"marketo"`
+	ListenAddress string
 }
 
 func main() {
 	var config Config
+
+	config.ListenAddress = os.Getenv("LISTEN_ADDRESS")
+	if config.ListenAddress == "" {
+		config.ListenAddress = ":8080"
+	}
+
 	logger := log.New(os.Stdout, "marketo-service", log.LstdFlags|log.Lshortfile)
 	config.Marketo.ID, _ = os.LookupEnv("MARKETO_ID")
 	config.Marketo.URL, _ = os.LookupEnv("MARKETO_URL")
@@ -38,7 +48,7 @@ func main() {
 
 	var marketoManager marketo.Manager
 	if err := config.Marketo.Validate(); err != nil {
-		log.Fatalf("WARNING: Marketo config is invalid: %v", err)
+		//log.Fatalf("WARNING: Marketo config is invalid: %v", err)
 	} else {
 		log.Print("initializing marketo manager")
 		marketoManager, _ = marketo.NewManager(logger, config.Marketo)
@@ -54,28 +64,71 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	userEventsHandler := events.NewUserEventsHandler(&handler.UserEventsHandler{
+	userEventsHandler := &handler.UserEventsHandler{
 		MarketoManager: marketoManager,
-	})
-	consumer.RegisterHandler(userEventsHandler)
+	}
+	consumer.RegisterHandler(events.NewUserEventsHandler(userEventsHandler))
 	consumer.RegisterHandler(&events.DebugEventHandler{})
+
+	router := mux.NewRouter()
+	refreshUser := handler.RefreshUser(userEventsHandler)
+	router.HandleFunc("/v1/users/{userId}/marketo", refreshUser).Methods("POST")
+
+	srv := &http.Server{
+		Addr:    config.ListenAddress,
+		Handler: router,
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	shutdown := make(chan struct{}, 2)
 
 	// listen to signals to stop consumer
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	// convert to cancel on context that server listens to
-	go func(stop chan os.Signal, cancelFunc context.CancelFunc) {
+	go func(stop chan os.Signal) {
 		<-stop
-		log.Println("SIGINT or SIGTERM received. Shutting down consumer")
-		cancelFunc()
-	}(stop, cancelFunc)
+		log.Println("SIGINT or SIGTERM received")
+		shutdown <- struct{}{}
+	}(stop)
 
-	err = consumer.Start(ctx)
-	if err != nil {
-		log.Fatalln(errors.Wrap(err, "Unable to start consumer"))
-	} else {
-		log.Println("Consumer stopped")
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	go func(wg *sync.WaitGroup) {
+		defer func() { shutdown <- struct{}{} }()
+		defer wg.Done()
+
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			log.Println(errors.Wrap(err, "Unable to start server"))
+		}
+	}(&wg)
+
+	go func(wg *sync.WaitGroup) {
+		defer func() { shutdown <- struct{}{} }()
+		defer wg.Done()
+
+		err = consumer.Start(ctx)
+		if err != nil {
+			log.Println(errors.Wrap(err, "Unable to start consumer"))
+		} else {
+			log.Println("Consumer stopped")
+		}
+
+	}(&wg)
+
+	go func(shutdown chan struct{}, cancel context.CancelFunc, wg *sync.WaitGroup) {
+		defer wg.Done()
+		defer cancel()
+		<-shutdown
+		log.Println("Shutting down")
+
+		shutdownCtx, c := context.WithTimeout(context.Background(), time.Second * 60)
+		defer c()
+
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			log.Println(errors.Wrap(err, "Unable to shutdown server"))
+		}
+	}(shutdown, cancel, &wg)
+
+	wg.Wait()
 }
