@@ -3,6 +3,7 @@ package marketo_test
 import (
 	"encoding/json"
 	"fmt"
+	clinic "github.com/tidepool-org/clinic/client"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -167,7 +168,7 @@ func Test_NewManager_Success(t *testing.T) {
 
 func Test_CreateListMembershipForUser_User_Missing(t *testing.T) {
 	manager := NewTestManagerWithClientMock(t)
-	manager.CreateListMembershipForUser("testNumber", shoreline.UserData{})
+	manager.CreateListMembershipForUser("testNumber", shoreline.UserData{}, &clinic.ClinicianClinicRelationships{})
 	time.Sleep(time.Second)
 }
 
@@ -175,7 +176,7 @@ func Test_CreateListMembershipForUser_User_Email_Missing(t *testing.T) {
 	manager := NewTestManagerWithClientMock(t)
 	newUserMock := NewUserMock()
 	newUserMock.Username = ""
-	manager.CreateListMembershipForUser("testNumber", newUserMock)
+	manager.CreateListMembershipForUser("testNumber", newUserMock, &clinic.ClinicianClinicRelationships{})
 	time.Sleep(time.Second)
 }
 
@@ -183,7 +184,7 @@ func Test_CreateListMembershipForUser_User_Email_Tidepool_Io(t *testing.T) {
 	manager := NewTestManagerWithClientMock(t)
 	newUserMock := NewUserMock()
 	newUserMock.Username = "test@tidepool.io"
-	manager.CreateListMembershipForUser("testNumber", newUserMock)
+	manager.CreateListMembershipForUser("testNumber", newUserMock, &clinic.ClinicianClinicRelationships{})
 	time.Sleep(time.Second)
 }
 
@@ -191,7 +192,7 @@ func Test_CreateListMembershipForUser_User_Email_Tidepool_Org(t *testing.T) {
 	manager := NewTestManagerWithClientMock(t)
 	newUserMock := NewUserMock()
 	newUserMock.Username = "test@tidepool.org"
-	manager.CreateListMembershipForUser("testNumber", newUserMock)
+	manager.CreateListMembershipForUser("testNumber", newUserMock, &clinic.ClinicianClinicRelationships{})
 	time.Sleep(time.Second)
 }
 
@@ -242,8 +243,8 @@ func Test_CreateListMembershipForUser_NewUser_Match_Personal(t *testing.T) {
 	newUserMock := NewUserMock()
 	newUserMock.Username = "tester@example.com"
 	newUserMock.Roles = nil
-	s.CreateListMembershipForUser("testNumber", newUserMock)
-	user := s.TypeForUser(newUserMock)
+	s.CreateListMembershipForUser("testNumber", newUserMock, &clinic.ClinicianClinicRelationships{})
+	user := s.TypeForUser(newUserMock, &clinic.ClinicianClinicRelationships{})
 	if user != "user" {
 		t.Errorf("Expected '%v', got 'clinic'", user)
 	}
@@ -296,8 +297,8 @@ func Test_CreateListMembershipForUser_NewUser_Match_Clinic(t *testing.T) {
 	newUserMock := NewUserMock()
 	newUserMock.Username = "tester@example.com"
 	newUserMock.Roles = []string{"clinic"}
-	s.CreateListMembershipForUser("testNumber", newUserMock)
-	user := s.TypeForUser(newUserMock)
+	s.CreateListMembershipForUser("testNumber", newUserMock, &clinic.ClinicianClinicRelationships{})
+	user := s.TypeForUser(newUserMock, &clinic.ClinicianClinicRelationships{})
 	if user != "clinic" {
 		t.Errorf("Expected '%v', got 'user'", user)
 	}
@@ -308,7 +309,7 @@ func Test_UpdateListMembershipForUser_NewUser_Missing(t *testing.T) {
 	oldUserMock := NewUserMock()
 	oldUserMock.Username = "ten@sample.com"
 	manager := NewTestManagerWithClientMock(t)
-	manager.UpdateListMembershipForUser("testNumber", oldUserMock, shoreline.UserData{}, false)
+	manager.UpdateListMembershipForUser("testNumber", oldUserMock, shoreline.UserData{}, false, &clinic.ClinicianClinicRelationships{})
 	time.Sleep(time.Second)
 }
 
@@ -316,7 +317,7 @@ func Test_UpdateListMembershipForUser_OldUser_Missing(t *testing.T) {
 	newUserMock := NewUserMock()
 	newUserMock.Username = "ten@sample.com"
 	manager := NewTestManagerWithClientMock(t)
-	manager.UpdateListMembershipForUser("testNumber", shoreline.UserData{}, newUserMock, false)
+	manager.UpdateListMembershipForUser("testNumber", shoreline.UserData{}, newUserMock, false, &clinic.ClinicianClinicRelationships{})
 	time.Sleep(time.Second)
 }
 
@@ -329,8 +330,8 @@ func Test_UpdateListMembershipForUser_NewUser_Match_Personal(t *testing.T) {
 	newUserMock := NewUserMock()
 	newUserMock.Username = "ten@sample.com"
 	newUserMock.Roles = nil
-	s.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false)
-	user := s.TypeForUser(newUserMock)
+	s.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false, &clinic.ClinicianClinicRelationships{})
+	user := s.TypeForUser(newUserMock, &clinic.ClinicianClinicRelationships{})
 	if user != "user" {
 		t.Errorf("Expected '%v', got 'clinic'", user)
 	}
@@ -346,8 +347,8 @@ func Test_UpdateListMembershipForUser_NewUser_Match_Clinic(t *testing.T) {
 	newUserMock := NewUserMock()
 	newUserMock.Username = "eleven@sample.com"
 	newUserMock.Roles = []string{"clinic"}
-	s.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false)
-	user := s.TypeForUser(newUserMock)
+	s.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false, &clinic.ClinicianClinicRelationships{})
+	user := s.TypeForUser(newUserMock, &clinic.ClinicianClinicRelationships{})
 	if user != "clinic" {
 		t.Errorf("Expected '%v', got 'user'", user)
 	}
@@ -360,7 +361,7 @@ func Test_UpdateListMembershipForUser_NewUser_Email_Missing(t *testing.T) {
 	oldUserMock.Username = "twelve@sample.com"
 	newUserMock := NewUserMock()
 	newUserMock.Username = ""
-	manager.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false)
+	manager.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false, &clinic.ClinicianClinicRelationships{})
 	time.Sleep(time.Second)
 }
 
@@ -370,7 +371,7 @@ func Test_UpdateListMembershipForUser_NewUser_Email_Tidepool_Io(t *testing.T) {
 	oldUserMock.Username = "twelve@sample.com"
 	newUserMock := NewUserMock()
 	newUserMock.Username = "test@tidepool.io"
-	manager.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false)
+	manager.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false, &clinic.ClinicianClinicRelationships{})
 	time.Sleep(time.Second)
 }
 
@@ -380,7 +381,7 @@ func Test_UpdateListMembershipForUser_NewUser_Email_Tidepool_Org(t *testing.T) {
 	oldUserMock.Username = "twelve@sample.com"
 	newUserMock := NewUserMock()
 	newUserMock.Username = "test@tidepool.org"
-	manager.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false)
+	manager.UpdateListMembershipForUser("testNumber", oldUserMock, newUserMock, false, &clinic.ClinicianClinicRelationships{})
 	time.Sleep(time.Second)
 }
 
@@ -504,7 +505,12 @@ func Test_UpdateListMember(t *testing.T) {
 	config := NewTestConfig(t, ts)
 	manager, _ := marketo.NewManager(logger, config)
 	var s = manager.(*marketo.Connector)
-	var addOrUpdateMember = s.UpsertListMember("testNumber", userType, oldEmail, newEmail, false)
+	input := marketo.Input{
+		TidepoolID: "testNumber",
+		Email:      newEmail,
+		UserType:   userType,
+	}
+	var addOrUpdateMember = s.UpsertListMember(oldEmail, input)
 	if addOrUpdateMember != nil {
 		t.Error("Expected nil, returned not nil")
 	}
@@ -594,7 +600,12 @@ func Test_CreateListMember(t *testing.T) {
 	config := NewTestConfig(t, ts)
 	manager, _ := marketo.NewManager(logger, config)
 	var s = manager.(*marketo.Connector)
-	var addOrUpdateMember = s.UpsertListMember("testNumber", userType, oldEmail, newEmail, false)
+	input := marketo.Input{
+		TidepoolID: "testNumber",
+		Email:      newEmail,
+		UserType:   userType,
+	}
+	var addOrUpdateMember = s.UpsertListMember(oldEmail, input)
 	if addOrUpdateMember != nil {
 		t.Error("Expected nil, returned not nil")
 	}
