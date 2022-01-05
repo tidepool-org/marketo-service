@@ -17,9 +17,9 @@ import (
 const path = "/rest/v1/leads.json?"
 
 const (
-	clinicAdminRole = "CLINIC_ADMIN"
+	clinicAdminRole  = "CLINIC_ADMIN"
 	clinicMemberRole = "CLINIC_MEMBER"
-	prescriberRole = "PRESCRIBER"
+	prescriberRole   = "PRESCRIBER"
 )
 
 // Manager interface for managing leads
@@ -202,13 +202,13 @@ func (m *Connector) UpsertListMembership(tidepoolID string, oldUser shoreline.Us
 	}
 
 	input := Input{
-		TidepoolID: tidepoolID,
-		Email: newEmail,
-		UserType: m.TypeForUser(newUser, clinics),
-		IsPrescriber: hasPrescriberRole(clinics),
+		TidepoolID:                tidepoolID,
+		Email:                     newEmail,
+		UserType:                  m.TypeForUser(newUser, clinics),
+		IsPrescriber:              hasPrescriberRole(clinics),
 		IsMemberOfMultipleClinics: isMemberOfMultipleClinics(clinics),
-		Unsubscribed: delete,
-		DeletedAccount: delete,
+		Unsubscribed:              delete,
+		DeletedAccount:            delete,
 	}
 	if err := m.UpsertListMember(listEmail, input); err != nil {
 		m.logger.Printf(`ERROR: marketo failure upserting member "%s" to "%s"; %s`, tidepoolID, newEmail, err)
@@ -287,10 +287,10 @@ func (m *Connector) FindLead(listEmail string) (int, bool, error) {
 
 // TypeForUser Identifies if the user is a clinic or patient
 func (m *Connector) TypeForUser(user shoreline.UserData, clinics *clinic.ClinicianClinicRelationships) string {
-	if user.IsClinic() {
-		return m.config.ClinicRole
-	} else if clinics != nil && len(*clinics) > 0 {
+	if clinics != nil && len(*clinics) > 0 {
 		return getHighestClinicRole(*clinics)
+	} else if user.IsClinic() {
+		return m.config.ClinicRole
 	}
 	return m.config.PatientRole
 }
@@ -311,7 +311,6 @@ func (m *Connector) IsAvailable() bool {
 	m.repairManager()
 	return m.client != nil && m.logger != nil
 }
-
 
 func getHighestClinicRole(clinics clinic.ClinicianClinicRelationships) string {
 	role := clinicMemberRole
