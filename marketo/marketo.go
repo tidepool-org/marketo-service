@@ -230,6 +230,7 @@ func (m *Connector) UpsertListMember(listEmail string, input Input) error {
 		[]Input{input},
 	}
 	if !exists {
+		input.ID = 0
 		data = CreateData{
 			"createOnly",
 			"email",
