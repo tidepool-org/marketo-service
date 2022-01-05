@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"github.com/gorilla/mux"
+	"github.com/kelseyhightower/envconfig"
+	clinic "github.com/tidepool-org/clinic/client"
+	"github.com/tidepool-org/go-common/clients/disc"
+	"github.com/tidepool-org/go-common/clients/shoreline"
 	"github.com/tidepool-org/go-common/errors"
 	"github.com/tidepool-org/go-common/events"
 	"github.com/tidepool-org/marketo-service/handler"
@@ -18,17 +22,22 @@ import (
 )
 
 type Config struct {
-	Marketo       marketo.Config `json:"marketo"`
-	ListenAddress string
+	Marketo marketo.Config `json:"marketo"`
+}
+
+type ServiceConfig struct {
+	ListenAddress string `envconfig:"LISTEN_ADDRESS" default:":8080"`
+	ShorelineHost string `envconfig:"TIDEPOOL_SHORELINE_CLIENT_ADDRESS" default:"http://shoreline:9107"`
+	ClinicsHost   string `envconfig:"TIDEPOOL_CLINIC_CLIENT_ADDRESS" default:"http://clinic:8080"`
+	ServerSecret  string `envconfig:"TIDEPOOL_SERVER_SECRET" required:"true"`
+}
+
+func (s *ServiceConfig) LoadFromEnv() error {
+	return envconfig.Process("", s)
 }
 
 func main() {
 	var config Config
-
-	config.ListenAddress = os.Getenv("LISTEN_ADDRESS")
-	if config.ListenAddress == "" {
-		config.ListenAddress = ":8080"
-	}
 
 	logger := log.New(os.Stdout, "marketo-service", log.LstdFlags|log.Lshortfile)
 	config.Marketo.ID, _ = os.LookupEnv("MARKETO_ID")
@@ -54,9 +63,24 @@ func main() {
 		marketoManager, _ = marketo.NewManager(logger, config.Marketo)
 	}
 
+	serviceConfig := &ServiceConfig{}
+	if err := serviceConfig.LoadFromEnv(); err != nil {
+		log.Fatalln(err)
+	}
+
 	cloudEventsConfig := events.NewConfig()
 	if err := cloudEventsConfig.LoadFromEnv(); err != nil {
 		logger.Println("error loading kafka config")
+		log.Fatalln(err)
+	}
+
+	shorelineClient, err := buildShoreline(serviceConfig)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	clinicService, err := buildClinicService(serviceConfig, shorelineClient)
+	if err != nil {
 		log.Fatalln(err)
 	}
 
@@ -64,7 +88,10 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+
 	userEventsHandler := &handler.UserEventsHandler{
+		Clinics: clinicService,
+		Shoreline: shorelineClient,
 		MarketoManager: marketoManager,
 	}
 	consumer.RegisterHandler(events.NewUserEventsHandler(userEventsHandler))
@@ -75,7 +102,7 @@ func main() {
 	router.HandleFunc("/v1/users/{userId}/marketo", refreshUser).Methods("POST")
 
 	srv := &http.Server{
-		Addr:    config.ListenAddress,
+		Addr:    serviceConfig.ListenAddress,
 		Handler: router,
 	}
 
@@ -122,7 +149,7 @@ func main() {
 		<-shutdown
 		log.Println("Shutting down")
 
-		shutdownCtx, c := context.WithTimeout(context.Background(), time.Second * 60)
+		shutdownCtx, c := context.WithTimeout(context.Background(), time.Second*60)
 		defer c()
 
 		if err := srv.Shutdown(shutdownCtx); err != nil {
@@ -131,4 +158,25 @@ func main() {
 	}(shutdown, cancel, &wg)
 
 	wg.Wait()
+}
+
+func buildShoreline(config *ServiceConfig) (shoreline.Client, error) {
+	httpClient := &http.Client{}
+	client := shoreline.NewShorelineClientBuilder().
+		WithHostGetter(disc.NewStaticHostGetterFromString(config.ListenAddress)).
+		WithHttpClient(httpClient).
+		WithName("marketo-service").
+		WithSecret(config.ServerSecret).
+		WithTokenRefreshInterval(time.Hour).
+		Build()
+
+	return client, client.Start()
+}
+
+func buildClinicService(config *ServiceConfig, shorelineClient shoreline.Client) (clinic.ClientWithResponsesInterface, error) {
+	opts := clinic.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+		req.Header.Add("x-tidepool-session-token", shorelineClient.TokenProvide())
+		return nil
+	})
+	return clinic.NewClientWithResponses(config.ClinicsHost, opts)
 }

@@ -19,8 +19,8 @@ var _ events.UserEventsHandler = &UserEventsHandler{}
 type UserEventsHandler struct {
 	events.NoopUserEventsHandler
 	MarketoManager marketo.Manager
-	clinics clinic.ClientWithResponsesInterface
-	shoreline shoreline.Client
+	Clinics clinic.ClientWithResponsesInterface
+	Shoreline shoreline.Client
 }
 
 func (u *UserEventsHandler) HandleUpdateUserEvent(event events.UpdateUserEvent) error {
@@ -51,7 +51,7 @@ func (u *UserEventsHandler) HandleDeleteUserEvent(event events.DeleteUserEvent) 
 }
 
 func (u *UserEventsHandler) RefreshUser(ctx context.Context, userId string) error {
- 	user, err := u.shoreline.GetUser(userId, u.shoreline.TokenProvide())
+ 	user, err := u.Shoreline.GetUser(userId, u.Shoreline.TokenProvide())
  	if err != nil {
  		return err
 	}
@@ -78,7 +78,7 @@ func (u *UserEventsHandler) getClinicsForClinician(ctx context.Context, userId s
 	params := &clinic.ListClinicsForClinicianParams{
 		Limit:  &maxClinics,
 	}
-	response, err := u.clinics.ListClinicsForClinicianWithResponse(ctx, clinic.UserId(userId), params)
+	response, err := u.Clinics.ListClinicsForClinicianWithResponse(ctx, clinic.UserId(userId), params)
 	if err != nil {
 		return nil, err
 	}
