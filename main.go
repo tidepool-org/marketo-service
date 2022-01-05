@@ -26,10 +26,10 @@ type Config struct {
 }
 
 type ServiceConfig struct {
-	ListenAddress string `envconfig:"LISTEN_ADDRESS" default:":8080"`
-	ShorelineHost string `envconfig:"TIDEPOOL_SHORELINE_CLIENT_ADDRESS" default:"http://shoreline:9107"`
 	ClinicsHost   string `envconfig:"TIDEPOOL_CLINIC_CLIENT_ADDRESS" default:"http://clinic:8080"`
+	ListenAddress string `envconfig:"LISTEN_ADDRESS" default:":8080"`
 	ServerSecret  string `envconfig:"TIDEPOOL_SERVER_SECRET" required:"true"`
+	ShorelineHost string `envconfig:"TIDEPOOL_SHORELINE_CLIENT_ADDRESS" default:"http://shoreline:9107"`
 }
 
 func (s *ServiceConfig) LoadFromEnv() error {
@@ -90,8 +90,8 @@ func main() {
 	}
 
 	userEventsHandler := &handler.UserEventsHandler{
-		Clinics: clinicService,
-		Shoreline: shorelineClient,
+		Clinics:        clinicService,
+		Shoreline:      shorelineClient,
 		MarketoManager: marketoManager,
 	}
 	consumer.RegisterHandler(events.NewUserEventsHandler(userEventsHandler))
@@ -163,7 +163,7 @@ func main() {
 func buildShoreline(config *ServiceConfig) (shoreline.Client, error) {
 	httpClient := &http.Client{}
 	client := shoreline.NewShorelineClientBuilder().
-		WithHostGetter(disc.NewStaticHostGetterFromString(config.ListenAddress)).
+		WithHostGetter(disc.NewStaticHostGetterFromString(config.ShorelineHost)).
 		WithHttpClient(httpClient).
 		WithName("marketo-service").
 		WithSecret(config.ServerSecret).
