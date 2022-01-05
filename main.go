@@ -98,7 +98,7 @@ func main() {
 	consumer.RegisterHandler(&events.DebugEventHandler{})
 
 	router := mux.NewRouter()
-	refreshUser := handler.RefreshUser(userEventsHandler)
+	refreshUser := handler.RefreshUser(userEventsHandler, shorelineClient)
 	router.HandleFunc("/v1/users/{userId}/marketo", refreshUser).Methods("POST")
 
 	srv := &http.Server{
