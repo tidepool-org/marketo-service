@@ -2,24 +2,43 @@ package main
 
 import (
 	"context"
-	"log"
-	"os"
-	"os/signal"
-	"strconv"
-	"syscall"
-
+	"github.com/gorilla/mux"
+	"github.com/kelseyhightower/envconfig"
+	clinic "github.com/tidepool-org/clinic/client"
+	"github.com/tidepool-org/go-common/clients/disc"
+	"github.com/tidepool-org/go-common/clients/shoreline"
 	"github.com/tidepool-org/go-common/errors"
 	"github.com/tidepool-org/go-common/events"
 	"github.com/tidepool-org/marketo-service/handler"
 	"github.com/tidepool-org/marketo-service/marketo"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"strconv"
+	"sync"
+	"syscall"
+	"time"
 )
 
 type Config struct {
 	Marketo marketo.Config `json:"marketo"`
 }
 
+type ServiceConfig struct {
+	ClinicsHost   string `envconfig:"TIDEPOOL_CLINIC_CLIENT_ADDRESS" default:"http://clinic:8080"`
+	ListenAddress string `envconfig:"LISTEN_ADDRESS" default:":8080"`
+	ServerSecret  string `envconfig:"TIDEPOOL_SERVER_SECRET" required:"true"`
+	ShorelineHost string `envconfig:"TIDEPOOL_SHORELINE_CLIENT_ADDRESS" default:"http://shoreline:9107"`
+}
+
+func (s *ServiceConfig) LoadFromEnv() error {
+	return envconfig.Process("", s)
+}
+
 func main() {
 	var config Config
+
 	logger := log.New(os.Stdout, "marketo-service", log.LstdFlags|log.Lshortfile)
 	config.Marketo.ID, _ = os.LookupEnv("MARKETO_ID")
 	config.Marketo.URL, _ = os.LookupEnv("MARKETO_URL")
@@ -38,10 +57,15 @@ func main() {
 
 	var marketoManager marketo.Manager
 	if err := config.Marketo.Validate(); err != nil {
-		log.Fatalf("WARNING: Marketo config is invalid: %v", err)
+		//log.Fatalf("WARNING: Marketo config is invalid: %v", err)
 	} else {
 		log.Print("initializing marketo manager")
 		marketoManager, _ = marketo.NewManager(logger, config.Marketo)
+	}
+
+	serviceConfig := &ServiceConfig{}
+	if err := serviceConfig.LoadFromEnv(); err != nil {
+		log.Fatalln(err)
 	}
 
 	cloudEventsConfig := events.NewConfig()
@@ -50,32 +74,109 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	shorelineClient, err := buildShoreline(serviceConfig)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	clinicService, err := buildClinicService(serviceConfig, shorelineClient)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	consumer, err := events.NewSaramaCloudEventsConsumer(cloudEventsConfig)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	userEventsHandler := events.NewUserEventsHandler(&handler.UserEventsHandler{
+
+	userEventsHandler := &handler.UserEventsHandler{
+		Clinics:        clinicService,
+		Shoreline:      shorelineClient,
 		MarketoManager: marketoManager,
-	})
-	consumer.RegisterHandler(userEventsHandler)
+	}
+	consumer.RegisterHandler(events.NewUserEventsHandler(userEventsHandler))
 	consumer.RegisterHandler(&events.DebugEventHandler{})
+
+	router := mux.NewRouter()
+	refreshUser := handler.RefreshUser(userEventsHandler, shorelineClient)
+	router.HandleFunc("/v1/users/{userId}/marketo", refreshUser).Methods("POST")
+
+	srv := &http.Server{
+		Addr:    serviceConfig.ListenAddress,
+		Handler: router,
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	shutdown := make(chan struct{}, 2)
 
 	// listen to signals to stop consumer
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	// convert to cancel on context that server listens to
-	go func(stop chan os.Signal, cancelFunc context.CancelFunc) {
+	go func(stop chan os.Signal) {
 		<-stop
-		log.Println("SIGINT or SIGTERM received. Shutting down consumer")
-		cancelFunc()
-	}(stop, cancelFunc)
+		log.Println("SIGINT or SIGTERM received")
+		shutdown <- struct{}{}
+	}(stop)
 
-	err = consumer.Start(ctx)
-	if err != nil {
-		log.Fatalln(errors.Wrap(err, "Unable to start consumer"))
-	} else {
-		log.Println("Consumer stopped")
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	go func(wg *sync.WaitGroup) {
+		defer func() { shutdown <- struct{}{} }()
+		defer wg.Done()
+
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			log.Println(errors.Wrap(err, "Unable to start server"))
+		}
+	}(&wg)
+
+	go func(wg *sync.WaitGroup) {
+		defer func() { shutdown <- struct{}{} }()
+		defer wg.Done()
+
+		err = consumer.Start(ctx)
+		if err != nil {
+			log.Println(errors.Wrap(err, "Unable to start consumer"))
+		} else {
+			log.Println("Consumer stopped")
+		}
+
+	}(&wg)
+
+	go func(shutdown chan struct{}, cancel context.CancelFunc, wg *sync.WaitGroup) {
+		defer wg.Done()
+		defer cancel()
+		<-shutdown
+		log.Println("Shutting down")
+
+		shutdownCtx, c := context.WithTimeout(context.Background(), time.Second*60)
+		defer c()
+
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			log.Println(errors.Wrap(err, "Unable to shutdown server"))
+		}
+	}(shutdown, cancel, &wg)
+
+	wg.Wait()
+}
+
+func buildShoreline(config *ServiceConfig) (shoreline.Client, error) {
+	httpClient := &http.Client{}
+	client := shoreline.NewShorelineClientBuilder().
+		WithHostGetter(disc.NewStaticHostGetterFromString(config.ShorelineHost)).
+		WithHttpClient(httpClient).
+		WithName("marketo-service").
+		WithSecret(config.ServerSecret).
+		WithTokenRefreshInterval(time.Hour).
+		Build()
+
+	return client, client.Start()
+}
+
+func buildClinicService(config *ServiceConfig, shorelineClient shoreline.Client) (clinic.ClientWithResponsesInterface, error) {
+	opts := clinic.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+		req.Header.Add("x-tidepool-session-token", shorelineClient.TokenProvide())
+		return nil
+	})
+	return clinic.NewClientWithResponses(config.ClinicsHost, opts)
 }

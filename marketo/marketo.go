@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	clinic "github.com/tidepool-org/clinic/client"
 	"log"
 	"net/url"
 	"strings"
@@ -15,10 +16,16 @@ import (
 
 const path = "/rest/v1/leads.json?"
 
+const (
+	clinicAdminRole  = "CLINIC_ADMIN"
+	clinicMemberRole = "CLINIC_MEMBER"
+	prescriberRole   = "PRESCRIBER"
+)
+
 // Manager interface for managing leads
 type Manager interface {
-	CreateListMembershipForUser(tidepoolID string, newUser shoreline.UserData)
-	UpdateListMembershipForUser(tidepoolID string, oldUser shoreline.UserData, newUser shoreline.UserData, delete bool)
+	CreateListMembershipForUser(tidepoolID string, newUser shoreline.UserData, clinics *clinic.ClinicianClinicRelationships)
+	UpdateListMembershipForUser(tidepoolID string, oldUser shoreline.UserData, newUser shoreline.UserData, delete bool, clinics *clinic.ClinicianClinicRelationships)
 	IsAvailable() bool
 }
 
@@ -46,13 +53,14 @@ type RecordResult struct {
 
 // Input type is the request user information format sent to marketo
 type Input struct {
-	ID             int    `json:"id,omitempty"`
-	TidepoolID     string `json:"tidepoolID"`
-	Email          string `json:"email"`
-	UserType       string `json:"userType"`
-	Unsubscribed   bool   `json:"unsubscribed"`
-	DeletedAccount bool   `json:"deletedAccount"`
-	// Env		  string `json:"envType"`
+	ID                        int    `json:"id,omitempty"`
+	TidepoolID                string `json:"tidepoolID"`
+	Email                     string `json:"email"`
+	UserType                  string `json:"userType"`
+	Unsubscribed              bool   `json:"unsubscribed"`
+	DeletedAccount            bool   `json:"deletedAccount"`
+	IsMemberOfMultipleClinics bool   `json:"clinicWorkspaceMemberofMultipleClinics"`
+	IsPrescriber              bool   `json:"clinicWorkspacePrescriber"`
 }
 
 // CreateData is the full marketo request format
@@ -161,19 +169,19 @@ func NewManager(logger *log.Logger, config Config) (Manager, error) {
 }
 
 // CreateListMembershipForUser is an asynchronous function that creates a user
-func (m *Connector) CreateListMembershipForUser(tidepoolID string, newUser shoreline.UserData) {
+func (m *Connector) CreateListMembershipForUser(tidepoolID string, newUser shoreline.UserData, clinics *clinic.ClinicianClinicRelationships) {
 	m.logger.Printf("CreateListMembershipForUser %v", newUser)
-	m.UpsertListMembership(tidepoolID, newUser, newUser, false)
+	m.UpsertListMembership(tidepoolID, newUser, newUser, false, clinics)
 }
 
 // UpdateListMembershipForUser is an asynchronous function that updates a user
-func (m *Connector) UpdateListMembershipForUser(tidepoolID string, oldUser shoreline.UserData, newUser shoreline.UserData, delete bool) {
+func (m *Connector) UpdateListMembershipForUser(tidepoolID string, oldUser shoreline.UserData, newUser shoreline.UserData, delete bool, clinics *clinic.ClinicianClinicRelationships) {
 	m.logger.Printf("UpdateListMembershipForUser %v", newUser)
-	m.UpsertListMembership(tidepoolID, oldUser, newUser, delete)
+	m.UpsertListMembership(tidepoolID, oldUser, newUser, delete, clinics)
 }
 
 // UpsertListMembership creates or updates a user depending on if the user already exists or not
-func (m *Connector) UpsertListMembership(tidepoolID string, oldUser shoreline.UserData, newUser shoreline.UserData, delete bool) error {
+func (m *Connector) UpsertListMembership(tidepoolID string, oldUser shoreline.UserData, newUser shoreline.UserData, delete bool, clinics *clinic.ClinicianClinicRelationships) error {
 	newEmail := strings.ToLower(newUser.Username)
 	oldEmail := strings.ToLower(oldUser.Username)
 	if newEmail == "" {
@@ -193,7 +201,16 @@ func (m *Connector) UpsertListMembership(tidepoolID string, oldUser shoreline.Us
 		listEmail = newEmail
 	}
 
-	if err := m.UpsertListMember(tidepoolID, m.TypeForUser(newUser), listEmail, newEmail, delete); err != nil {
+	input := Input{
+		TidepoolID:                tidepoolID,
+		Email:                     newEmail,
+		UserType:                  m.TypeForUser(newUser, clinics),
+		IsPrescriber:              hasPrescriberRole(clinics),
+		IsMemberOfMultipleClinics: isMemberOfMultipleClinics(clinics),
+		Unsubscribed:              delete,
+		DeletedAccount:            delete,
+	}
+	if err := m.UpsertListMember(listEmail, input); err != nil {
 		m.logger.Printf(`ERROR: marketo failure upserting member "%s" to "%s"; %s`, tidepoolID, newEmail, err)
 		return err
 	}
@@ -201,25 +218,23 @@ func (m *Connector) UpsertListMembership(tidepoolID string, oldUser shoreline.Us
 }
 
 // UpsertListMember creates or updates lead based on if lead already exists
-func (m *Connector) UpsertListMember(tidepoolID string, role string, listEmail string, newEmail string, delete bool) error {
+func (m *Connector) UpsertListMember(listEmail string, input Input) error {
 	id, exists, err := m.FindLead(listEmail)
 	if err != nil {
 		return fmt.Errorf("marketo: could not find a lead %v", err)
 	}
+	input.ID = id
 	data := CreateData{
 		"updateOnly",
 		"id",
-		[]Input{
-			{id, tidepoolID, newEmail, role, delete, delete},
-		},
+		[]Input{input},
 	}
 	if !exists {
+		input.ID = 0
 		data = CreateData{
 			"createOnly",
 			"email",
-			[]Input{
-				{0, tidepoolID, newEmail, role, delete, delete},
-			},
+			[]Input{input},
 		}
 	}
 	dataInBytes, err := json.Marshal(data)
@@ -271,8 +286,10 @@ func (m *Connector) FindLead(listEmail string) (int, bool, error) {
 }
 
 // TypeForUser Identifies if the user is a clinic or patient
-func (m *Connector) TypeForUser(user shoreline.UserData) string {
-	if user.IsClinic() {
+func (m *Connector) TypeForUser(user shoreline.UserData, clinics *clinic.ClinicianClinicRelationships) string {
+	if clinics != nil && len(*clinics) > 0 {
+		return getHighestClinicRole(*clinics)
+	} else if user.IsClinic() {
 		return m.config.ClinicRole
 	}
 	return m.config.PatientRole
@@ -293,4 +310,38 @@ func (m *Connector) IsAvailable() bool {
 	}
 	m.repairManager()
 	return m.client != nil && m.logger != nil
+}
+
+func getHighestClinicRole(clinics clinic.ClinicianClinicRelationships) string {
+	role := clinicMemberRole
+clinicsLoop:
+	for _, c := range clinics {
+		for _, r := range c.Clinician.Roles {
+			if r == clinicAdminRole {
+				role = r
+				break clinicsLoop
+			}
+		}
+	}
+	return strings.ToLower(role)
+}
+
+func hasPrescriberRole(clinics *clinic.ClinicianClinicRelationships) bool {
+	res := false
+	if clinics != nil && len(*clinics) > 1 {
+	clinicsLoop:
+		for _, c := range *clinics {
+			for _, r := range c.Clinician.Roles {
+				if r == prescriberRole {
+					res = true
+					break clinicsLoop
+				}
+			}
+		}
+	}
+	return res
+}
+
+func isMemberOfMultipleClinics(clinics *clinic.ClinicianClinicRelationships) bool {
+	return clinics != nil && len(*clinics) > 1
 }
