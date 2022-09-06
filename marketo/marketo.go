@@ -17,6 +17,7 @@ import (
 const path = "/rest/v1/leads.json?"
 
 const (
+	clinicianRole    = "clinician"
 	clinicAdminRole  = "CLINIC_ADMIN"
 	clinicMemberRole = "CLINIC_MEMBER"
 	prescriberRole   = "PRESCRIBER"
@@ -289,14 +290,12 @@ func (m *Connector) FindLead(listEmail string) (int, bool, error) {
 func (m *Connector) TypeForUser(user shoreline.UserData, clinics *clinic.ClinicianClinicRelationships) string {
 	if clinics != nil && len(*clinics) > 0 {
 		return getHighestClinicRole(*clinics)
+	} else if user.HasRole(clinicianRole) {
+		return clinicianRole
 	} else if user.IsClinic() {
 		return m.config.ClinicRole
 	}
 	return m.config.PatientRole
-}
-
-func matchUsers(oldUser shoreline.UserData, newUser shoreline.UserData) bool {
-	return oldUser.Username == newUser.Username && oldUser.IsClinic() == newUser.IsClinic()
 }
 
 func hasTidepoolDomain(email string) bool {
