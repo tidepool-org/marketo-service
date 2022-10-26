@@ -118,9 +118,10 @@ func main() {
 
 	keycloakUsersConfig := *cloudEventsConfig
 	keycloakUsersConfig.KafkaTopic = keycloakUsersTopic
+	keycloakUsersConfig.KafkaDeadLettersTopic = ""
 	// CDC topic use '.' separator instead of '-'
 	if strings.HasSuffix(keycloakUsersConfig.KafkaTopicPrefix, ".") {
-		keycloakUsersConfig.KafkaTopicPrefix = strings.TrimSuffix(keycloakUsersConfig.KafkaTopicPrefix, ".") + "-"
+		keycloakUsersConfig.KafkaTopicPrefix = strings.TrimSuffix(keycloakUsersConfig.KafkaTopicPrefix, "-") + "."
 	}
 
 	keycloakUsersCg, err := events.NewFaultTolerantConsumerGroup(&keycloakUsersConfig, func() (events.MessageConsumer, error) {
@@ -132,9 +133,10 @@ func main() {
 
 	keycloakRolesConfig := *cloudEventsConfig
 	keycloakRolesConfig.KafkaTopic = keycloakRolesTopic
+	keycloakRolesConfig.KafkaDeadLettersTopic = ""
 	// CDC topic use '.' separator instead of '-'
 	if strings.HasSuffix(keycloakRolesConfig.KafkaTopicPrefix, ".") {
-		keycloakRolesConfig.KafkaTopicPrefix = strings.TrimSuffix(keycloakRolesConfig.KafkaTopicPrefix, ".") + "-"
+		keycloakRolesConfig.KafkaTopicPrefix = strings.TrimSuffix(keycloakRolesConfig.KafkaTopicPrefix, "-") + "."
 	}
 
 	keycloakRolesCg, err := events.NewFaultTolerantConsumerGroup(cloudEventsConfig, func() (events.MessageConsumer, error) {
