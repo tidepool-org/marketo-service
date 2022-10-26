@@ -10,6 +10,7 @@ import (
 	"github.com/tidepool-org/go-common/clients/shoreline"
 	"github.com/tidepool-org/go-common/events"
 	"github.com/tidepool-org/marketo-service/marketo"
+	"log"
 	"net/http"
 )
 
@@ -71,8 +72,10 @@ func (k *KeycloakUserEventsConsumer) HandleKafkaMessage(cm *sarama.ConsumerMessa
 
 	switch event.Op {
 	case Snapshot, Create, Update:
+		log.Printf("Upserting user %v\n", event)
 		return k.userEventsHandler.UpsertUser(event)
 	case Delete:
+		log.Printf("Deleting user %v\n", event)
 		return k.userEventsHandler.DeleteUser(event)
 	default:
 		return fmt.Errorf("unknown op %s", event.Op)
@@ -102,6 +105,7 @@ func (k *KeycloakRoleEventsConsumer) HandleKafkaMessage(cm *sarama.ConsumerMessa
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
+	log.Printf("Refreshing user %v\n", key.UserId)
 	return k.userEventsHandler.RefreshUser(ctx, key.UserId)
 }
 
