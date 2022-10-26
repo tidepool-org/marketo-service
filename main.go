@@ -36,7 +36,6 @@ type ServiceConfig struct {
 	ListenAddress string `envconfig:"LISTEN_ADDRESS" default:":8080"`
 	ServerSecret  string `envconfig:"TIDEPOOL_SERVER_SECRET" required:"true"`
 	ShorelineHost string `envconfig:"TIDEPOOL_SHORELINE_CLIENT_ADDRESS" default:"http://shoreline:9107"`
-	KeycloakRealm string `envconfig:"KEYCLOAK_REALM" required:"true"`
 }
 
 func (s *ServiceConfig) LoadFromEnv() error {
