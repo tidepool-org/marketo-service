@@ -8,6 +8,7 @@ import (
 	"github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2"
 	clinic "github.com/tidepool-org/clinic/client"
 	"github.com/tidepool-org/go-common/clients/shoreline"
+	"github.com/tidepool-org/go-common/clients/status"
 	"github.com/tidepool-org/go-common/events"
 	"github.com/tidepool-org/marketo-service/marketo"
 	"log"
@@ -139,7 +140,7 @@ func (k *KeycloakEventsHandler) UpsertUser(event KeycloakUsersEvent) error {
 		return err
 	}
 
-	user, err := k.Shoreline.GetUser(userId, k.Shoreline.TokenProvide())
+	user, err := k.getUserById(userId)
 	if err != nil {
 		return err
 	}
@@ -182,7 +183,7 @@ func (k *KeycloakEventsHandler) DeleteUser(event KeycloakUsersEvent) error {
 }
 
 func (k *KeycloakEventsHandler) RefreshUser(ctx context.Context, userId string) error {
-	user, err := k.Shoreline.GetUser(userId, k.Shoreline.TokenProvide())
+	user, err := k.getUserById(userId)
 	if err != nil {
 		return err
 	}
@@ -217,4 +218,15 @@ func (k *KeycloakEventsHandler) getClinicsForClinician(ctx context.Context, user
 		return nil, fmt.Errorf("unexpected status code %v when fetching clinics for user %v", response.StatusCode(), userId)
 	}
 	return response.JSON200, nil
+}
+
+func (k *KeycloakEventsHandler) getUserById(userId string) (*shoreline.UserData, error) {
+	user, err := k.Shoreline.GetUser(userId, k.Shoreline.TokenProvide())
+	if err != nil {
+		if e, ok := err.(*status.StatusError); ok && e.Code == http.StatusNotFound {
+			return nil, nil
+		}
+	}
+
+	return user, err
 }
