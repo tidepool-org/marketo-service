@@ -120,7 +120,7 @@ func main() {
 	keycloakUsersConfig.KafkaTopic = keycloakUsersTopic
 	keycloakUsersConfig.KafkaDeadLettersTopic = ""
 	// CDC topic use '.' separator instead of '-'
-	if strings.HasSuffix(keycloakUsersConfig.KafkaTopicPrefix, ".") {
+	if strings.HasSuffix(keycloakUsersConfig.KafkaTopicPrefix, "-") {
 		keycloakUsersConfig.KafkaTopicPrefix = strings.TrimSuffix(keycloakUsersConfig.KafkaTopicPrefix, "-") + "."
 	}
 
@@ -135,7 +135,7 @@ func main() {
 	keycloakRolesConfig.KafkaTopic = keycloakRolesTopic
 	keycloakRolesConfig.KafkaDeadLettersTopic = ""
 	// CDC topic use '.' separator instead of '-'
-	if strings.HasSuffix(keycloakRolesConfig.KafkaTopicPrefix, ".") {
+	if strings.HasSuffix(keycloakRolesConfig.KafkaTopicPrefix, "-") {
 		keycloakRolesConfig.KafkaTopicPrefix = strings.TrimSuffix(keycloakRolesConfig.KafkaTopicPrefix, "-") + "."
 	}
 
