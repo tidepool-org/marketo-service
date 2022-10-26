@@ -38,10 +38,10 @@ type RolesEventKey struct {
 }
 
 type UserDAO struct {
-	Id            string
-	Email         string
-	EmailVerified bool
-	Username      string
+	Id            string `json:"id"`
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"email_verified"`
+	Username      string `json:"username"`
 }
 
 var _ events.MessageConsumer = &KeycloakUserEventsConsumer{}
@@ -72,10 +72,10 @@ func (k *KeycloakUserEventsConsumer) HandleKafkaMessage(cm *sarama.ConsumerMessa
 
 	switch event.Op {
 	case Snapshot, Create, Update:
-		log.Printf("Upserting user %v\n", event)
+		log.Printf("Upserting user %v\n", string(m.Value))
 		return k.userEventsHandler.UpsertUser(event)
 	case Delete:
-		log.Printf("Deleting user %v\n", event)
+		log.Printf("Deleting user %v\n", string(m.Value))
 		return k.userEventsHandler.DeleteUser(event)
 	default:
 		return fmt.Errorf("unknown op %s", event.Op)

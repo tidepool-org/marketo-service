@@ -139,7 +139,7 @@ func main() {
 		keycloakRolesConfig.KafkaTopicPrefix = strings.TrimSuffix(keycloakRolesConfig.KafkaTopicPrefix, "-") + "."
 	}
 
-	keycloakRolesCg, err := events.NewFaultTolerantConsumerGroup(cloudEventsConfig, func() (events.MessageConsumer, error) {
+	keycloakRolesCg, err := events.NewFaultTolerantConsumerGroup(&keycloakRolesConfig, func() (events.MessageConsumer, error) {
 		return handler.NewKeycloakRoleEventsConsumer(&keycloakEventsHandler)
 	})
 	if err != nil {
