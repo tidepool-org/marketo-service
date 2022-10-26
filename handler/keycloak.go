@@ -11,7 +11,6 @@ import (
 	"github.com/tidepool-org/go-common/events"
 	"github.com/tidepool-org/marketo-service/marketo"
 	"net/http"
-	"strconv"
 )
 
 const (
@@ -64,13 +63,9 @@ func (k *KeycloakUserEventsConsumer) HandleKafkaMessage(cm *sarama.ConsumerMessa
 		// Ignore tombstone messages
 		return nil
 	}
-	message, err := strconv.Unquote(string(m.Value))
-	if err != nil {
-		return err
-	}
 
 	event := KeycloakUsersEvent{}
-	if err := json.Unmarshal([]byte(message), &event); err != nil {
+	if err := json.Unmarshal(m.Value, &event); err != nil {
 		return err
 	}
 
