@@ -211,7 +211,7 @@ func (m *Connector) UpsertListMembership(tidepoolID string, oldUser shoreline.Us
 		Unsubscribed:              delete,
 		DeletedAccount:            delete,
 	}
-	if err := m.UpsertListMember(listEmail, input); err != nil {
+	if err := m.UpsertListMember(tidepoolID, listEmail, input); err != nil {
 		m.logger.Printf(`ERROR: marketo failure upserting member "%s" to "%s"; %s`, tidepoolID, newEmail, err)
 		return err
 	}
@@ -219,11 +219,18 @@ func (m *Connector) UpsertListMembership(tidepoolID string, oldUser shoreline.Us
 }
 
 // UpsertListMember creates or updates lead based on if lead already exists
-func (m *Connector) UpsertListMember(listEmail string, input Input) error {
-	id, exists, err := m.FindLead(listEmail)
+func (m *Connector) UpsertListMember(userId, listEmail string, input Input) error {
+	id, exists, err := m.FindLeadByUserId(userId)
 	if err != nil {
 		return fmt.Errorf("marketo: could not find a lead %v", err)
 	}
+	if !exists {
+		id, exists, err = m.FindLeadByEmail(listEmail)
+		if err != nil {
+			return fmt.Errorf("marketo: could not find a lead %v", err)
+		}
+	}
+
 	input.ID = id
 	data := CreateData{
 		"updateOnly",
@@ -256,11 +263,41 @@ func (m *Connector) UpsertListMember(listEmail string, input Input) error {
 	return nil
 }
 
-// FindLead is used to find a lead in Marketo
-func (m *Connector) FindLead(listEmail string) (int, bool, error) {
+// FindLeadByEmail is used to find a lead in Marketo by email
+func (m *Connector) FindLeadByEmail(listEmail string) (int, bool, error) {
 	v := url.Values{
 		"filterType":   {"email"},
 		"filterValues": {listEmail},
+		"fields":       {"email,id"},
+	}
+	response, err := m.client.Get(path + v.Encode())
+	if err != nil {
+		m.logger.Println(err)
+		return -1, false, err
+	}
+	if !response.Success {
+		m.logger.Println(response.Errors)
+		return -1, false, err
+	}
+	var leads []LeadResult
+	if err = json.Unmarshal(response.Result, &leads); err != nil {
+		m.logger.Println(err)
+		return -1, false, err
+	}
+	if len(leads) != 1 {
+		return -1, false, nil
+	}
+	if len(leads) == 0 {
+		return -1, false, nil
+	}
+	return leads[0].ID, true, nil
+}
+
+// FindLeadByUserId is used to find a lead in Marketo by tidepool userId
+func (m *Connector) FindLeadByUserId(userId string) (int, bool, error) {
+	v := url.Values{
+		"filterType":   {"tidepoolID"},
+		"filterValues": {userId},
 		"fields":       {"email,id"},
 	}
 	response, err := m.client.Get(path + v.Encode())

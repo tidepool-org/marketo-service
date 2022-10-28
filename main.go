@@ -16,9 +16,15 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
+)
+
+const (
+	keycloakUsersTopic = "keycloak.public.user_entity"
+	keycloakRolesTopic = "keycloak.public.user_role_mapping"
 )
 
 type Config struct {
@@ -84,18 +90,61 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	consumer, err := events.NewSaramaCloudEventsConsumer(cloudEventsConfig)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	userEventsHandler := &handler.UserEventsHandler{
 		Clinics:        clinicService,
 		Shoreline:      shorelineClient,
 		MarketoManager: marketoManager,
 	}
-	consumer.RegisterHandler(events.NewUserEventsHandler(userEventsHandler))
-	consumer.RegisterHandler(&events.DebugEventHandler{})
+
+	handlers := []events.EventHandler{
+		events.NewUserEventsHandler(userEventsHandler),
+		&events.DebugEventHandler{},
+	}
+
+	createConsumer := func() (events.MessageConsumer, error) {
+		return events.NewCloudEventsMessageHandler(handlers)
+	}
+
+	cg, err := events.NewFaultTolerantConsumerGroup(cloudEventsConfig, createConsumer)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	keycloakEventsHandler := handler.KeycloakEventsHandler{
+		Clinics:        clinicService,
+		MarketoManager: marketoManager,
+		Shoreline:      shorelineClient,
+	}
+
+	keycloakUsersConfig := *cloudEventsConfig
+	keycloakUsersConfig.KafkaTopic = keycloakUsersTopic
+	keycloakUsersConfig.KafkaDeadLettersTopic = ""
+	// CDC topic use '.' separator instead of '-'
+	if strings.HasSuffix(keycloakUsersConfig.KafkaTopicPrefix, "-") {
+		keycloakUsersConfig.KafkaTopicPrefix = strings.TrimSuffix(keycloakUsersConfig.KafkaTopicPrefix, "-") + "."
+	}
+
+	keycloakUsersCg, err := events.NewFaultTolerantConsumerGroup(&keycloakUsersConfig, func() (events.MessageConsumer, error) {
+		return handler.NewKeycloakUserEventsConsumer(&keycloakEventsHandler)
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	keycloakRolesConfig := *cloudEventsConfig
+	keycloakRolesConfig.KafkaTopic = keycloakRolesTopic
+	keycloakRolesConfig.KafkaDeadLettersTopic = ""
+	// CDC topic use '.' separator instead of '-'
+	if strings.HasSuffix(keycloakRolesConfig.KafkaTopicPrefix, "-") {
+		keycloakRolesConfig.KafkaTopicPrefix = strings.TrimSuffix(keycloakRolesConfig.KafkaTopicPrefix, "-") + "."
+	}
+
+	keycloakRolesCg, err := events.NewFaultTolerantConsumerGroup(&keycloakRolesConfig, func() (events.MessageConsumer, error) {
+		return handler.NewKeycloakRoleEventsConsumer(&keycloakEventsHandler)
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	router := mux.NewRouter()
 	refreshUser := handler.RefreshUser(userEventsHandler, shorelineClient)
@@ -107,7 +156,7 @@ func main() {
 	}
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(4)
 	shutdown := make(chan struct{}, 2)
 
 	// listen to signals to stop consumer
@@ -120,10 +169,9 @@ func main() {
 		shutdown <- struct{}{}
 	}(stop)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	_, cancel := context.WithCancel(context.Background())
 	go func(wg *sync.WaitGroup) {
 		defer func() { shutdown <- struct{}{} }()
-		defer wg.Done()
 
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			log.Println(errors.Wrap(err, "Unable to start server"))
@@ -132,9 +180,8 @@ func main() {
 
 	go func(wg *sync.WaitGroup) {
 		defer func() { shutdown <- struct{}{} }()
-		defer wg.Done()
 
-		err = consumer.Start(ctx)
+		err = cg.Start()
 		if err != nil {
 			log.Println(errors.Wrap(err, "Unable to start consumer"))
 		} else {
@@ -143,18 +190,62 @@ func main() {
 
 	}(&wg)
 
+	go func(wg *sync.WaitGroup) {
+		defer func() { shutdown <- struct{}{} }()
+
+		err = keycloakUsersCg.Start()
+		if err != nil {
+			log.Println(errors.Wrap(err, "Unable to start consumer"))
+		} else {
+			log.Println("Consumer stopped")
+		}
+	}(&wg)
+
+	go func(wg *sync.WaitGroup) {
+		defer func() { shutdown <- struct{}{} }()
+
+		err = keycloakRolesCg.Start()
+		if err != nil {
+			log.Println(errors.Wrap(err, "Unable to start consumer"))
+		} else {
+			log.Println("Consumer stopped")
+		}
+	}(&wg)
+
 	go func(shutdown chan struct{}, cancel context.CancelFunc, wg *sync.WaitGroup) {
-		defer wg.Done()
 		defer cancel()
 		<-shutdown
 		log.Println("Shutting down")
 
-		shutdownCtx, c := context.WithTimeout(context.Background(), time.Second*60)
-		defer c()
+		go func() {
+			defer wg.Done()
+			shutdownCtx, c := context.WithTimeout(context.Background(), time.Second*60)
+			defer c()
+			if err := srv.Shutdown(shutdownCtx); err != nil {
+				log.Println(errors.Wrap(err, "Unable to shutdown server"))
+			}
+		}()
 
-		if err := srv.Shutdown(shutdownCtx); err != nil {
-			log.Println(errors.Wrap(err, "Unable to shutdown server"))
-		}
+		go func() {
+			defer wg.Done()
+			if err := cg.Stop(); err != nil {
+				log.Println(errors.Wrap(err, "Unable to stop user events consumer group"))
+			}
+		}()
+
+		go func() {
+			defer wg.Done()
+			if err := keycloakUsersCg.Stop(); err != nil {
+				log.Println(errors.Wrap(err, "Unable to stop keycloak users consumer group"))
+			}
+		}()
+
+		go func() {
+			defer wg.Done()
+			if err := keycloakRolesCg.Stop(); err != nil {
+				log.Println(errors.Wrap(err, "Unable to stop keycloak roles consumer group"))
+			}
+		}()
 	}(shutdown, cancel, &wg)
 
 	wg.Wait()
