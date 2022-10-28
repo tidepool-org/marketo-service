@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"runtime/debug"
-
 	"testing"
 	"time"
 
@@ -226,8 +225,8 @@ func Test_CreateListMembershipForUser_NewUser_Match_Personal(t *testing.T) {
 				t.Errorf("Error parsing query params: %v", err)
 			}
 			checkParam(t, params, "fields", "email,id")
-			checkParam(t, params, "filterType", "email")
-			checkParam(t, params, "filterValues", "tester@example.com")
+			checkParam(t, params, "filterType", "tidepoolID")
+			checkParam(t, params, "filterValues", "testNumber")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -280,8 +279,8 @@ func Test_CreateListMembershipForUser_NewUser_Match_Clinic(t *testing.T) {
 				t.Errorf("Error parsing query params: %v", err)
 			}
 			checkParam(t, params, "fields", "email,id")
-			checkParam(t, params, "filterType", "email")
-			checkParam(t, params, "filterValues", "tester@example.com")
+			checkParam(t, params, "filterType", "tidepoolID")
+			checkParam(t, params, "filterValues", "testNumber")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -454,8 +453,8 @@ func Test_UpdateListMember(t *testing.T) {
 				t.Errorf("Error parsing query params: %v", err)
 			}
 			checkParam(t, params, "fields", "email,id")
-			checkParam(t, params, "filterType", "email")
-			checkParam(t, params, "filterValues", "oldtester@example.com")
+			checkParam(t, params, "filterType", "tidepoolID")
+			checkParam(t, params, "filterValues", "testNumber")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -510,7 +509,7 @@ func Test_UpdateListMember(t *testing.T) {
 		Email:      newEmail,
 		UserType:   userType,
 	}
-	var addOrUpdateMember = s.UpsertListMember(oldEmail, input)
+	var addOrUpdateMember = s.UpsertListMember("testNumber", oldEmail, input)
 	if addOrUpdateMember != nil {
 		t.Error("Expected nil, returned not nil")
 	}
@@ -549,8 +548,8 @@ func Test_CreateListMember(t *testing.T) {
 				t.Errorf("Error parsing query params: %v", err)
 			}
 			checkParam(t, params, "fields", "email,id")
-			checkParam(t, params, "filterType", "email")
-			checkParam(t, params, "filterValues", "oldtester@example.com")
+			checkParam(t, params, "filterType", "tidepoolID")
+			checkParam(t, params, "filterValues", "testNumber")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -558,6 +557,25 @@ func Test_CreateListMember(t *testing.T) {
 			w.Write([]byte(getResponseSuccess))
 		}
 		if called == 3 {
+			if r.URL.EscapedPath() != "/rest/v1/leads.json" {
+				t.Errorf("Expected path to be /rest/v1/leads.json, got %s", r.URL.EscapedPath())
+			}
+
+			// check query params
+			params, err := url.ParseQuery(r.URL.RawQuery)
+			if err != nil {
+				t.Errorf("Error parsing query params: %v", err)
+			}
+			checkParam(t, params, "fields", "email,id")
+			checkParam(t, params, "filterType", "email")
+			checkParam(t, params, "filterValues", oldEmail)
+			// check method
+			if r.Method != "GET" {
+				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
+			}
+			w.Write([]byte(getResponseSuccess))
+		}
+		if called == 4 {
 			// check path
 			if r.URL.EscapedPath() != path {
 				t.Errorf("Expected path to be %s, got %s", path, r.URL.EscapedPath())
@@ -605,7 +623,7 @@ func Test_CreateListMember(t *testing.T) {
 		Email:      newEmail,
 		UserType:   userType,
 	}
-	var addOrUpdateMember = s.UpsertListMember(oldEmail, input)
+	var addOrUpdateMember = s.UpsertListMember("testNumber", oldEmail, input)
 	if addOrUpdateMember != nil {
 		t.Error("Expected nil, returned not nil")
 	}
@@ -740,9 +758,9 @@ const (
 func checkParam(t *testing.T, params url.Values, key, expected string) {
 	log.Printf("PARAMS KEY %v", params[key][0])
 	log.Printf("EXPECTED %v", expected)
-	debug.PrintStack()
 	if params[key][0] != expected {
 		t.Errorf("expected '%s', got '%s'", expected, params[key][0])
+		debug.PrintStack()
 	}
 }
 func MockServer(t *testing.T) (ts *httptest.Server) {
