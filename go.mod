@@ -10,5 +10,5 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/tidepool-org/clinic/client v0.0.0-20211214105825-d52b8a7e578a
 	github.com/tidepool-org/go-common v0.10.0
-	go.mongodb.org/mongo-driver v1.4.0
+	go.mongodb.org/mongo-driver v1.5.1
 )
