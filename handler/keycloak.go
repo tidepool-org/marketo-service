@@ -123,14 +123,13 @@ func (k *KeycloakEventsHandler) UpsertUser(event KeycloakUsersEvent) error {
 
 	userId := event.After.Id
 
-	old := shoreline.UserData{}
+	old := shoreline.UserData{
+		UserID: userId,
+	}
 	if event.Before != nil {
-		old = shoreline.UserData{
-			UserID:        userId,
-			Username:      event.Before.Username,
-			Emails:        []string{event.Before.Email},
-			EmailVerified: event.Before.EmailVerified,
-		}
+		old.Username = event.Before.Username
+		old.Emails = []string{event.Before.Email}
+		old.EmailVerified = event.Before.EmailVerified
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
