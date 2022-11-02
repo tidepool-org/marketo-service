@@ -165,19 +165,15 @@ func (k *KeycloakEventsHandler) DeleteUser(event KeycloakUsersEvent) error {
 		return nil
 	}
 
-	userId := event.After.Id
-	old := shoreline.UserData{}
-	if event.Before != nil {
-		old = shoreline.UserData{
-			UserID:        userId,
-			Username:      event.Before.Username,
-			Emails:        []string{event.Before.Email},
-			EmailVerified: event.Before.EmailVerified,
-		}
+	old := shoreline.UserData{
+		UserID:        event.Before.Id,
+		Username:      event.Before.Username,
+		Emails:        []string{event.Before.Email},
+		EmailVerified: event.Before.EmailVerified,
 	}
 
 	clinics := make(clinic.ClinicianClinicRelationships, 0)
-	k.MarketoManager.UpdateListMembershipForUser(userId, old, old, true, &clinics)
+	k.MarketoManager.UpdateListMembershipForUser(old.UserID, old, old, true, &clinics)
 	return nil
 }
 
