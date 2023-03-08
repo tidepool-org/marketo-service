@@ -1,5 +1,5 @@
 # Development
-FROM golang:1.16.7-alpine AS development
+FROM golang:1.19.6-alpine AS development
 WORKDIR /go/src/github.com/tidepool-org/marketo-service
 RUN apk --no-cache update && \
     apk --no-cache upgrade && \
