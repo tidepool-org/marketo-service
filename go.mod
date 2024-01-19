@@ -54,3 +54,6 @@ require (
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 )
+
+// Resolve GO-2020-0036, GO-2021-0061, GO-2022-0956
+replace gopkg.in/yaml.v2 v2.2.2 => gopkg.in/yaml.v2 v2.3.0
