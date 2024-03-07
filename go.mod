@@ -1,6 +1,6 @@
 module github.com/tidepool-org/marketo-service
 
-go 1.21
+go 1.22
 
 require (
 	github.com/Shopify/sarama v1.38.1
@@ -8,8 +8,8 @@ require (
 	github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2 v2.14.0
 	github.com/gorilla/mux v1.8.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/tidepool-org/clinic/client v0.0.0-20240119154138-fd88ad427641
-	github.com/tidepool-org/go-common v0.11.1-0.20240119151220-be854abc1af5
+	github.com/tidepool-org/clinic/client v0.0.0-20240307005814-71ebe5953545
+	github.com/tidepool-org/go-common v0.11.1-0.20240306185825-1ddb2b762e00
 	go.mongodb.org/mongo-driver v1.12.1
 )
 
