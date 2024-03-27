@@ -8,15 +8,15 @@ require (
 	github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2 v2.14.0
 	github.com/gorilla/mux v1.8.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/tidepool-org/clinic/client v0.0.0-20240307005814-71ebe5953545
-	github.com/tidepool-org/go-common v0.11.1-0.20240306185825-1ddb2b762e00
+	github.com/tidepool-org/clinic/client v0.0.0-20240327165651-1935a7e97b44
+	github.com/tidepool-org/go-common v0.12.0
 	go.mongodb.org/mongo-driver v1.12.1
 )
 
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/avast/retry-go v3.0.0+incompatible // indirect
-	github.com/cloudevents/sdk-go/v2 v2.14.0 // indirect
+	github.com/cloudevents/sdk-go/v2 v2.15.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.5.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
