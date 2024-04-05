@@ -8,8 +8,8 @@ require (
 	github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2 v2.14.0
 	github.com/gorilla/mux v1.8.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/tidepool-org/clinic/client v0.0.0-20240327165651-1935a7e97b44
-	github.com/tidepool-org/go-common v0.12.0
+	github.com/tidepool-org/clinic/client v0.0.0-20240405013858-50f54cf204d6
+	github.com/tidepool-org/go-common v0.12.1
 	go.mongodb.org/mongo-driver v1.12.1
 )
 
@@ -49,8 +49,8 @@ require (
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
-	golang.org/x/crypto v0.18.0 // indirect
-	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/crypto v0.21.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 )
