@@ -8,7 +8,7 @@ require (
 	github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2 v2.14.0
 	github.com/gorilla/mux v1.8.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/tidepool-org/clinic/client v0.0.0-20240405013858-50f54cf204d6
+	github.com/tidepool-org/clinic/client v0.0.0-20240412024055-e6391b37e456
 	github.com/tidepool-org/go-common v0.12.1
 	go.mongodb.org/mongo-driver v1.12.1
 )
