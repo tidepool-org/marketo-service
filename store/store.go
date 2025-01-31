@@ -44,6 +44,7 @@ type User struct {
 	ModifiedTime   string   `json:"modifiedTime,omitempty" bson:"modifiedTime,omitempty"`
 	ModifiedUserID string   `json:"modifiedUserId,omitempty" bson:"modifiedUserId,omitempty"`
 }
+
 // NewMongoStoreClient creates a new MongoStoreClient
 func NewMongoStoreClient(config *tpMongo.Config) *MongoStoreClient {
 	connectionString, err := config.ToConnectionString()
@@ -109,6 +110,7 @@ func (msc *MongoStoreClient) FindUser(ctx context.Context, id string) (result *U
 
 	return result, nil
 }
+
 // FindUsersWithIds - find and return multiple users by Tidepool User ID
 func (msc *MongoStoreClient) FindUsersWithIds(ctx context.Context, ids []string) (results []*User, err error) {
 	opts := options.Find().SetCollation(usersCollation)
@@ -128,6 +130,7 @@ func (msc *MongoStoreClient) FindUsersWithIds(ctx context.Context, ids []string)
 
 	return results, nil
 }
+
 // FindUsers - find and return multiple existing users
 func (msc *MongoStoreClient) FindUsers(ctx context.Context, user *User) (results []*User, err error) {
 	fieldsToMatch := []bson.M{}

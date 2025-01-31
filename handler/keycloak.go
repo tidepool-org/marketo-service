@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/cloudevents/sdk-go/protocol/kafka_sarama/v2"
 	clinic "github.com/tidepool-org/clinic/client"
 	"github.com/tidepool-org/go-common/clients/shoreline"
