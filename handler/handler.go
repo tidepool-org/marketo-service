@@ -14,13 +14,14 @@ import (
 )
 
 const timeout = time.Second * 30
+
 var _ events.UserEventsHandler = &UserEventsHandler{}
 
 type UserEventsHandler struct {
 	events.NoopUserEventsHandler
 	MarketoManager marketo.Manager
-	Clinics clinic.ClientWithResponsesInterface
-	Shoreline shoreline.Client
+	Clinics        clinic.ClientWithResponsesInterface
+	Shoreline      shoreline.Client
 }
 
 func (u *UserEventsHandler) HandleUpdateUserEvent(event events.UpdateUserEvent) error {
@@ -51,9 +52,9 @@ func (u *UserEventsHandler) HandleDeleteUserEvent(event events.DeleteUserEvent) 
 }
 
 func (u *UserEventsHandler) RefreshUser(ctx context.Context, userId string) error {
- 	user, err := u.Shoreline.GetUser(userId, u.Shoreline.TokenProvide())
- 	if err != nil {
- 		return err
+	user, err := u.Shoreline.GetUser(userId, u.Shoreline.TokenProvide())
+	if err != nil {
+		return err
 	}
 	// User is already deleted
 	if user == nil {
@@ -76,7 +77,7 @@ func (u *UserEventsHandler) RefreshUser(ctx context.Context, userId string) erro
 func (u *UserEventsHandler) getClinicsForClinician(ctx context.Context, userId string) (*clinic.ClinicianClinicRelationships, error) {
 	maxClinics := clinic.Limit(1000)
 	params := &clinic.ListClinicsForClinicianParams{
-		Limit:  &maxClinics,
+		Limit: &maxClinics,
 	}
 	response, err := u.Clinics.ListClinicsForClinicianWithResponse(ctx, clinic.UserId(userId), params)
 	if err != nil {
