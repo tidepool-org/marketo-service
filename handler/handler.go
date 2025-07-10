@@ -74,7 +74,7 @@ func (u *UserEventsHandler) RefreshUser(ctx context.Context, userId string) erro
 	return nil
 }
 
-func (u *UserEventsHandler) getClinicsForClinician(ctx context.Context, userId string) (*clinic.ClinicianClinicRelationships, error) {
+func (u *UserEventsHandler) getClinicsForClinician(ctx context.Context, userId string) (*clinic.ClinicianClinicRelationshipsV1, error) {
 	maxClinics := clinic.Limit(1000)
 	params := &clinic.ListClinicsForClinicianParams{
 		Limit: &maxClinics,

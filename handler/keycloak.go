@@ -172,7 +172,7 @@ func (k *KeycloakEventsHandler) DeleteUser(event KeycloakUsersEvent) error {
 		EmailVerified: event.Before.EmailVerified,
 	}
 
-	clinics := make(clinic.ClinicianClinicRelationships, 0)
+	clinics := make(clinic.ClinicianClinicRelationshipsV1, 0)
 	k.MarketoManager.UpdateListMembershipForUser(old.UserID, old, old, true, &clinics)
 	return nil
 }
@@ -200,7 +200,7 @@ func (k *KeycloakEventsHandler) RefreshUser(ctx context.Context, userId string) 
 	return nil
 }
 
-func (k *KeycloakEventsHandler) getClinicsForClinician(ctx context.Context, userId string) (*clinic.ClinicianClinicRelationships, error) {
+func (k *KeycloakEventsHandler) getClinicsForClinician(ctx context.Context, userId string) (*clinic.ClinicianClinicRelationshipsV1, error) {
 	maxClinics := clinic.Limit(1000)
 	params := &clinic.ListClinicsForClinicianParams{
 		Limit: &maxClinics,

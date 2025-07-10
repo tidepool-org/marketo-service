@@ -25,8 +25,8 @@ const (
 
 // Manager interface for managing leads
 type Manager interface {
-	CreateListMembershipForUser(tidepoolID string, newUser shoreline.UserData, clinics *clinic.ClinicianClinicRelationships)
-	UpdateListMembershipForUser(tidepoolID string, oldUser shoreline.UserData, newUser shoreline.UserData, delete bool, clinics *clinic.ClinicianClinicRelationships)
+	CreateListMembershipForUser(tidepoolID string, newUser shoreline.UserData, clinics *clinic.ClinicianClinicRelationshipsV1)
+	UpdateListMembershipForUser(tidepoolID string, oldUser shoreline.UserData, newUser shoreline.UserData, delete bool, clinics *clinic.ClinicianClinicRelationshipsV1)
 	IsAvailable() bool
 }
 
@@ -170,19 +170,19 @@ func NewManager(logger *log.Logger, config Config) (Manager, error) {
 }
 
 // CreateListMembershipForUser is an asynchronous function that creates a user
-func (m *Connector) CreateListMembershipForUser(tidepoolID string, newUser shoreline.UserData, clinics *clinic.ClinicianClinicRelationships) {
+func (m *Connector) CreateListMembershipForUser(tidepoolID string, newUser shoreline.UserData, clinics *clinic.ClinicianClinicRelationshipsV1) {
 	m.logger.Printf("CreateListMembershipForUser %v", newUser)
 	m.UpsertListMembership(tidepoolID, newUser, newUser, false, clinics)
 }
 
 // UpdateListMembershipForUser is an asynchronous function that updates a user
-func (m *Connector) UpdateListMembershipForUser(tidepoolID string, oldUser shoreline.UserData, newUser shoreline.UserData, delete bool, clinics *clinic.ClinicianClinicRelationships) {
+func (m *Connector) UpdateListMembershipForUser(tidepoolID string, oldUser shoreline.UserData, newUser shoreline.UserData, delete bool, clinics *clinic.ClinicianClinicRelationshipsV1) {
 	m.logger.Printf("UpdateListMembershipForUser %v", newUser)
 	m.UpsertListMembership(tidepoolID, oldUser, newUser, delete, clinics)
 }
 
 // UpsertListMembership creates or updates a user depending on if the user already exists or not
-func (m *Connector) UpsertListMembership(tidepoolID string, oldUser shoreline.UserData, newUser shoreline.UserData, delete bool, clinics *clinic.ClinicianClinicRelationships) error {
+func (m *Connector) UpsertListMembership(tidepoolID string, oldUser shoreline.UserData, newUser shoreline.UserData, delete bool, clinics *clinic.ClinicianClinicRelationshipsV1) error {
 	newEmail := strings.ToLower(newUser.Username)
 	oldEmail := strings.ToLower(oldUser.Username)
 	if newEmail == "" {
@@ -324,7 +324,7 @@ func (m *Connector) FindLeadByUserId(userId string) (int, bool, error) {
 }
 
 // TypeForUser Identifies if the user is a clinic or patient
-func (m *Connector) TypeForUser(user shoreline.UserData, clinics *clinic.ClinicianClinicRelationships) string {
+func (m *Connector) TypeForUser(user shoreline.UserData, clinics *clinic.ClinicianClinicRelationshipsV1) string {
 	if clinics != nil && len(*clinics) > 0 {
 		return getHighestClinicRole(*clinics)
 	} else if user.HasRole(clinicianRole) {
@@ -348,7 +348,7 @@ func (m *Connector) IsAvailable() bool {
 	return m.client != nil && m.logger != nil
 }
 
-func getHighestClinicRole(clinics clinic.ClinicianClinicRelationships) string {
+func getHighestClinicRole(clinics clinic.ClinicianClinicRelationshipsV1) string {
 	role := clinicMemberRole
 clinicsLoop:
 	for _, c := range clinics {
@@ -362,7 +362,7 @@ clinicsLoop:
 	return strings.ToLower(role)
 }
 
-func hasPrescriberRole(clinics *clinic.ClinicianClinicRelationships) bool {
+func hasPrescriberRole(clinics *clinic.ClinicianClinicRelationshipsV1) bool {
 	res := false
 	if clinics != nil && len(*clinics) > 1 {
 	clinicsLoop:
@@ -378,6 +378,6 @@ func hasPrescriberRole(clinics *clinic.ClinicianClinicRelationships) bool {
 	return res
 }
 
-func isMemberOfMultipleClinics(clinics *clinic.ClinicianClinicRelationships) bool {
+func isMemberOfMultipleClinics(clinics *clinic.ClinicianClinicRelationshipsV1) bool {
 	return clinics != nil && len(*clinics) > 1
 }
