@@ -4,14 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	clinic "github.com/tidepool-org/clinic/client"
 	"log"
 	"net/url"
 	"strings"
 
-	"github.com/tidepool-org/go-common/clients/shoreline"
-
 	"github.com/SpeakData/minimarketo"
+
+	clinic "github.com/tidepool-org/clinic/client"
+	"github.com/tidepool-org/go-common/clients/shoreline"
 )
 
 const path = "/rest/v1/leads.json?"
@@ -240,12 +240,15 @@ func (m *Connector) UpsertListMember(userId, listEmail string, input Input) erro
 	if !exists {
 		input.ID = 0
 		data = CreateData{
-			"createOnly",
+			"createOrUpdate",
 			"email",
 			[]Input{input},
 		}
 	}
 	dataInBytes, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("marshaling marketo CreateData: %w", err)
+	}
 	response, err := m.client.Post(path, dataInBytes)
 	if err != nil {
 		m.logger.Println(err)
@@ -256,7 +259,7 @@ func (m *Connector) UpsertListMember(userId, listEmail string, input Input) erro
 		return fmt.Errorf("marketo: issue with request %v", response.Errors)
 	}
 	var createResults []minimarketo.RecordResult
-	if err = json.Unmarshal(response.Result, &createResults); err != nil {
+	if err := json.Unmarshal(response.Result, &createResults); err != nil {
 		m.logger.Println(err)
 		return fmt.Errorf("marketo: could not get a response %v", err)
 	}
