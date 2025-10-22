@@ -229,6 +229,7 @@ func Test_CreateListMembershipForUser_NewUser_Match_Personal(t *testing.T) {
 			checkParam(t, params, "fields", "email,id")
 			checkParam(t, params, "filterType", "tidepoolID")
 			checkParam(t, params, "filterValues", "testNumber")
+			ensureParamMissing(t, params, "access_token")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -286,6 +287,7 @@ func Test_CreateListMembershipForUser_NewUser_Match_Clinic(t *testing.T) {
 			checkParam(t, params, "fields", "email,id")
 			checkParam(t, params, "filterType", "tidepoolID")
 			checkParam(t, params, "filterValues", "testNumber")
+			ensureParamMissing(t, params, "access_token")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -463,6 +465,7 @@ func Test_UpdateListMember(t *testing.T) {
 			checkParam(t, params, "fields", "email,id")
 			checkParam(t, params, "filterType", "tidepoolID")
 			checkParam(t, params, "filterValues", "testNumber")
+			ensureParamMissing(t, params, "access_token")
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -561,6 +564,8 @@ func Test_CreateListMember(t *testing.T) {
 			checkParam(t, params, "fields", "email,id")
 			checkParam(t, params, "filterType", "tidepoolID")
 			checkParam(t, params, "filterValues", "testNumber")
+			ensureParamMissing(t, params, "access_token")
+
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
@@ -666,6 +671,7 @@ func Test_FindLead(t *testing.T) {
 			checkParam(t, params, "filterType", "email")
 			checkParam(t, params, "fields", "email,id")
 			checkParam(t, params, "filterValues", "tester@example.com")
+			ensureParamMissing(t, params, "access_token")
 
 			// check method
 			if r.Method != "GET" {
@@ -771,13 +777,22 @@ const (
 )
 
 func checkParam(t *testing.T, params url.Values, key, expected string) {
-	log.Printf("PARAMS KEY %v", params[key][0])
-	log.Printf("EXPECTED %v", expected)
+	value := params.Get(key)
+	t.Logf("PARAMS KEY %v", value)
+	t.Logf("EXPECTED %v", expected)
 	if params[key][0] != expected {
-		t.Errorf("expected '%s', got '%s'", expected, params[key][0])
+		t.Errorf("expected '%s', got '%s'", expected, value)
 		debug.PrintStack()
 	}
 }
+
+func ensureParamMissing(t *testing.T, params url.Values, key string) {
+	if len(params[key]) != 0 {
+		value := params.Get(key)
+		t.Errorf("expected param '%s' to not be present, got '%s'", key, value)
+	}
+}
+
 func MockServer(t *testing.T) (ts *httptest.Server) {
 	token := "aaaa-bbbb-cccc"
 	called := 0

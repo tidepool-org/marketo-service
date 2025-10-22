@@ -47,8 +47,15 @@ const (
 )
 
 func checkParam(t *testing.T, params url.Values, key, expected string) {
-	if params[key][0] != expected {
-		t.Errorf("expected '%s', got '%s'", expected, params[key][0])
+	if value := params.Get(key); value != expected {
+		t.Errorf("expected '%s', got '%s'", expected, value)
+	}
+}
+
+func ensureParamMissing(t *testing.T, params url.Values, key string) {
+	if len(params[key]) != 0 {
+		value := params.Get(key)
+		t.Errorf("expected param '%s' to not be present, got '%s'", key, value)
 	}
 }
 
@@ -348,6 +355,7 @@ func TestGetSuccess(t *testing.T) {
 			checkParam(t, params, "filterType", "email")
 			checkParam(t, params, "fields", "email,id")
 			checkParam(t, params, "filterValues", "tester@example.com")
+			ensureParamMissing(t, params, "access_token")
 
 			// check method
 			if r.Method != "GET" {
@@ -422,6 +430,7 @@ func TestGetSuccessWithSoonExpiringToken(t *testing.T) {
 			checkParam(t, params, "filterType", "email")
 			checkParam(t, params, "fields", "email,id")
 			checkParam(t, params, "filterValues", "tester@example.com")
+			ensureParamMissing(t, params, "access_token")
 
 			// check method
 			if r.Method != "GET" {
@@ -498,6 +507,7 @@ func TestGetSuccessWithExpiringToken(t *testing.T) {
 			checkParam(t, params, "filterType", "email")
 			checkParam(t, params, "fields", "email,id")
 			checkParam(t, params, "filterValues", "tester@example.com")
+			ensureParamMissing(t, params, "access_token")
 
 			// check method
 			if r.Method != "GET" {
@@ -673,6 +683,7 @@ func TestDeleteSuccess(t *testing.T) {
 				t.Errorf("Expected 'DELETE' request, got '%s'", r.Method)
 			}
 
+			ensureParamMissing(t, r.URL.Query(), "access_token")
 			if authorization := r.Header.Get("Authorization"); !strings.HasPrefix(authorization, "Bearer ") {
 				t.Errorf(`Expected for "Authorization" request header to be present and contain bearer token, received "%s"`, authorization)
 			}
@@ -784,6 +795,7 @@ func TestPostSuccess(t *testing.T) {
 				t.Errorf("Expected 'POST' request, got '%s'", r.Method)
 			}
 
+			ensureParamMissing(t, r.URL.Query(), "access_token")
 			if authorization := r.Header.Get("Authorization"); !strings.HasPrefix(authorization, "Bearer ") {
 				t.Errorf(`Expected for "Authorization" request header to be present and contain bearer token, received "%s"`, authorization)
 			}
