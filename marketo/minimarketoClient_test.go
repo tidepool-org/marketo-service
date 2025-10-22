@@ -3,10 +3,11 @@ package marketo
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -353,6 +354,10 @@ func TestGetSuccess(t *testing.T) {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
 			}
 
+			if authorization := r.Header.Get("Authorization"); !strings.HasPrefix(authorization, "Bearer ") {
+				t.Errorf(`Expected for "Authorization" request header to be present and contain bearer token, received "%s"`, authorization)
+			}
+
 			w.Write([]byte(getResponseSuccess))
 		}
 		called++
@@ -421,6 +426,10 @@ func TestGetSuccessWithSoonExpiringToken(t *testing.T) {
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
+			}
+
+			if authorization := r.Header.Get("Authorization"); !strings.HasPrefix(authorization, "Bearer ") {
+				t.Errorf(`Expected for "Authorization" request header to be present and contain bearer token, received "%s"`, authorization)
 			}
 
 			if called == 1 {
@@ -493,6 +502,10 @@ func TestGetSuccessWithExpiringToken(t *testing.T) {
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
+			}
+
+			if authorization := r.Header.Get("Authorization"); !strings.HasPrefix(authorization, "Bearer ") {
+				t.Errorf(`Expected for "Authorization" request header to be present and contain bearer token, received "%s"`, authorization)
 			}
 
 			if called == 1 {
@@ -660,8 +673,12 @@ func TestDeleteSuccess(t *testing.T) {
 				t.Errorf("Expected 'DELETE' request, got '%s'", r.Method)
 			}
 
+			if authorization := r.Header.Get("Authorization"); !strings.HasPrefix(authorization, "Bearer ") {
+				t.Errorf(`Expected for "Authorization" request header to be present and contain bearer token, received "%s"`, authorization)
+			}
+
 			// check body
-			body, err := ioutil.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				t.Error(err)
 			}
@@ -767,8 +784,12 @@ func TestPostSuccess(t *testing.T) {
 				t.Errorf("Expected 'POST' request, got '%s'", r.Method)
 			}
 
+			if authorization := r.Header.Get("Authorization"); !strings.HasPrefix(authorization, "Bearer ") {
+				t.Errorf(`Expected for "Authorization" request header to be present and contain bearer token, received "%s"`, authorization)
+			}
+
 			// check body
-			body, err := ioutil.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				t.Error(err)
 			}

@@ -3,15 +3,17 @@ package marketo_test
 import (
 	"encoding/json"
 	"fmt"
-	clinic "github.com/tidepool-org/clinic/client"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"runtime/debug"
+	"strings"
 	"testing"
 	"time"
+
+	clinic "github.com/tidepool-org/clinic/client"
 
 	"github.com/tidepool-org/go-common/clients/shoreline"
 	"github.com/tidepool-org/marketo-service/marketo"
@@ -134,7 +136,7 @@ func Test_NewManager_Logger_Missing(t *testing.T) {
 }
 
 func Test_NewManager_Config_Invalid(t *testing.T) {
-	logger := log.New(ioutil.Discard, "", log.LstdFlags)
+	logger := log.New(io.Discard, "", log.LstdFlags)
 	x := MockServer(t)
 	defer x.Close()
 	config := NewTestConfig(t, x)
@@ -152,7 +154,7 @@ func Test_NewManager_Config_Invalid(t *testing.T) {
 }
 
 func Test_NewManager_Success(t *testing.T) {
-	logger := log.New(ioutil.Discard, "", log.LstdFlags)
+	logger := log.New(io.Discard, "", log.LstdFlags)
 	x := MockServer(t)
 	defer x.Close()
 	config := NewTestConfig(t, x)
@@ -231,11 +233,14 @@ func Test_CreateListMembershipForUser_NewUser_Match_Personal(t *testing.T) {
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
 			}
+			if authorization := r.Header.Get("Authorization"); !strings.HasPrefix(authorization, "Bearer ") {
+				t.Errorf(`Expected for "Authorization" request header to be present and contain bearer token, received "%s"`, authorization)
+			}
 			w.Write([]byte(getResponseSuccess))
 		}
 	}))
 	defer ts.Close()
-	logger := log.New(ioutil.Discard, "", log.LstdFlags)
+	logger := log.New(io.Discard, "", log.LstdFlags)
 	config := NewTestConfig(t, ts)
 	manager, _ := marketo.NewManager(logger, config)
 	var s = manager.(*marketo.Connector)
@@ -285,11 +290,14 @@ func Test_CreateListMembershipForUser_NewUser_Match_Clinic(t *testing.T) {
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
 			}
+			if authorization := r.Header.Get("Authorization"); !strings.HasPrefix(authorization, "Bearer ") {
+				t.Errorf(`Expected for "Authorization" request header to be present and contain bearer token, received "%s"`, authorization)
+			}
 			w.Write([]byte(getResponseSuccess))
 		}
 	}))
 	defer ts.Close()
-	logger := log.New(ioutil.Discard, "", log.LstdFlags)
+	logger := log.New(io.Discard, "", log.LstdFlags)
 	config := NewTestConfig(t, ts)
 	manager, _ := marketo.NewManager(logger, config)
 	var s = manager.(*marketo.Connector)
@@ -459,6 +467,9 @@ func Test_UpdateListMember(t *testing.T) {
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
 			}
+			if authorization := r.Header.Get("Authorization"); !strings.HasPrefix(authorization, "Bearer ") {
+				t.Errorf(`Expected for "Authorization" request header to be present and contain bearer token, received "%s"`, authorization)
+			}
 			w.Write([]byte(getResponseSuccess))
 		}
 		if called == 3 {
@@ -473,7 +484,7 @@ func Test_UpdateListMember(t *testing.T) {
 			}
 
 			// check body
-			body, err := ioutil.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				t.Error(err)
 			}
@@ -500,7 +511,7 @@ func Test_UpdateListMember(t *testing.T) {
 		}
 	}))
 	defer ts.Close()
-	logger := log.New(ioutil.Discard, "", log.LstdFlags)
+	logger := log.New(io.Discard, "", log.LstdFlags)
 	config := NewTestConfig(t, ts)
 	manager, _ := marketo.NewManager(logger, config)
 	var s = manager.(*marketo.Connector)
@@ -587,7 +598,7 @@ func Test_CreateListMember(t *testing.T) {
 			}
 
 			// check body
-			body, err := ioutil.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				t.Error(err)
 			}
@@ -614,7 +625,7 @@ func Test_CreateListMember(t *testing.T) {
 		}
 	}))
 	defer ts.Close()
-	logger := log.New(ioutil.Discard, "", log.LstdFlags)
+	logger := log.New(io.Discard, "", log.LstdFlags)
 	config := NewTestConfig(t, ts)
 	manager, _ := marketo.NewManager(logger, config)
 	var s = manager.(*marketo.Connector)
@@ -655,9 +666,13 @@ func Test_FindLead(t *testing.T) {
 			checkParam(t, params, "filterType", "email")
 			checkParam(t, params, "fields", "email,id")
 			checkParam(t, params, "filterValues", "tester@example.com")
+
 			// check method
 			if r.Method != "GET" {
 				t.Errorf("Expected 'GET' request, got '%s'", r.Method)
+			}
+			if authorization := r.Header.Get("Authorization"); !strings.HasPrefix(authorization, "Bearer ") {
+				t.Errorf(`Expected for "Authorization" request header to be present and contain bearer token, received "%s"`, authorization)
 			}
 			w.Write([]byte(getResponseSuccess))
 		}
@@ -805,7 +820,7 @@ func NewTestConfig(t *testing.T, mockServer *httptest.Server) marketo.Config {
 }
 
 func NewTestManagerWithClientMock(t *testing.T) marketo.Manager {
-	logger := log.New(ioutil.Discard, "", log.LstdFlags)
+	logger := log.New(io.Discard, "", log.LstdFlags)
 	x := MockServer(t)
 	defer x.Close()
 	config := NewTestConfig(t, x)
