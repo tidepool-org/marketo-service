@@ -90,14 +90,9 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	userEventsHandler := &handler.UserEventsHandler{
-		Clinics:        clinicService,
-		Shoreline:      shorelineClient,
-		MarketoManager: marketoManager,
-	}
-
+	// Do not create a UserEventsHandler to avoid possibly processing a kafka message in the user-events topic and keycloak users topic at the same time.
+	// TODO: Confirm if this means all users should be migrated to keycloak first.
 	handlers := []events.EventHandler{
-		events.NewUserEventsHandler(userEventsHandler),
 		&events.DebugEventHandler{},
 	}
 
@@ -147,7 +142,7 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	refreshUser := handler.RefreshUser(userEventsHandler, shorelineClient)
+	refreshUser := handler.RefreshUser(&keycloakEventsHandler, shorelineClient)
 	router.HandleFunc("/v1/users/{userId}/marketo", refreshUser).Methods("POST")
 
 	srv := &http.Server{

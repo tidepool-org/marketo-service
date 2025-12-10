@@ -149,6 +149,11 @@ func (k *KeycloakEventsHandler) UpsertUser(event KeycloakUsersEvent) error {
 		return nil
 	}
 
+	// Add logic from [UserEventsHandler.HandleUpdateUserEvent] for UPDATES here.
+	if event.Op == Update && user.TermsAccepted == "" {
+		return nil
+	}
+
 	// In the keycloak CDC we don't have previous values for roles,
 	// whether the user has a password or if they have accepted the terms.
 	// It's ok to use the updated values, because those are not used lookups.
@@ -156,7 +161,13 @@ func (k *KeycloakEventsHandler) UpsertUser(event KeycloakUsersEvent) error {
 	old.PasswordExists = user.PasswordExists
 	old.TermsAccepted = user.TermsAccepted
 
-	k.MarketoManager.UpdateListMembershipForUser(userId, old, *user, false, clinics)
+	// Since removing UserEventsHandler, add its update logic here
+	if event.Op == Update && event.Before != nil && old.TermsAccepted == "" {
+		k.MarketoManager.CreateListMembershipForUser(userId, *user, clinics)
+	} else {
+		k.MarketoManager.UpdateListMembershipForUser(userId, old, *user, false, clinics)
+	}
+
 	return nil
 }
 
@@ -188,7 +199,7 @@ func (k *KeycloakEventsHandler) RefreshUser(ctx context.Context, userId string) 
 	}
 	// The user hasn't verified their account.
 	// They'll be added to marketo later when the user object is updated.
-	if !user.EmailVerified {
+	if !user.EmailVerified || user.TermsAccepted == "" {
 		return nil
 	}
 	clinics, err := k.getClinicsForClinician(ctx, userId)
