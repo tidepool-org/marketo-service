@@ -52,7 +52,7 @@ type KeycloakUserEventsConsumer struct {
 }
 
 func NewKeycloakUserEventsConsumer(userEventsHandler *KeycloakEventsHandler) (*KeycloakUserEventsConsumer, error) {
-	return &KeycloakUserEventsConsumer{userEventsHandler: newKeycloakEventsHandler()}, nil
+	return &KeycloakUserEventsConsumer{userEventsHandler: userEventsHandler}, nil
 }
 
 func (k *KeycloakUserEventsConsumer) Initialize(config *events.CloudEventsConfig) error {
@@ -114,14 +114,6 @@ type KeycloakEventsHandler struct {
 	Clinics        clinic.ClientWithResponsesInterface
 	Shoreline      shoreline.Client
 	MarketoManager marketo.Manager
-	// Since TermsAccepted is not part of the user keycloak CDC event, we don't
-	// know the value of the before value of TermsAccepted on a user update, so
-	// store in memory.
-	previousUserTermsAccepted map[string]string
-}
-
-func newKeycloakEventsHandler() *KeycloakEventsHandler {
-	return &KeycloakEventsHandler{previousUserTermsAccepted: map[string]string{}}
 }
 
 func (k *KeycloakEventsHandler) UpsertUser(event KeycloakUsersEvent) error {
@@ -156,28 +148,19 @@ func (k *KeycloakEventsHandler) UpsertUser(event KeycloakUsersEvent) error {
 	if user == nil {
 		return nil
 	}
+	// Don't issue marketo calls until user accepts terms
+	if user.TermsAccepted == "" {
+		return nil
+	}
 
 	// In the keycloak CDC we don't have previous values for roles,
 	// whether the user has a password or if they have accepted the terms.
 	// It's ok to use the updated values, because those are not used lookups.
 	old.Roles = user.Roles
 	old.PasswordExists = user.PasswordExists
-	if priorTermsAccepted, ok := k.previousUserTermsAccepted[userId]; ok {
-		old.TermsAccepted = priorTermsAccepted
-	} else {
-		old.TermsAccepted = user.TermsAccepted
-	}
-	// Since removing UserEventsHandler, add its update logic here
-	if event.Op == Update && old.TermsAccepted == "" {
-		k.MarketoManager.CreateListMembershipForUser(userId, *user, clinics)
-	} else {
-		k.MarketoManager.UpdateListMembershipForUser(userId, old, *user, false, clinics)
-	}
-	if event.Op == Delete {
-		delete(k.previousUserTermsAccepted, userId)
-	} else {
-		k.previousUserTermsAccepted[userId] = user.TermsAccepted
-	}
+	old.TermsAccepted = user.TermsAccepted
+
+	k.MarketoManager.UpdateListMembershipForUser(userId, old, *user, false, clinics)
 	return nil
 }
 
