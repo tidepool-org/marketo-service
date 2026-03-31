@@ -91,7 +91,6 @@ func main() {
 	}
 
 	// Do not create a UserEventsHandler to avoid possibly processing a kafka message in the user-events topic and keycloak users topic at the same time.
-	// TODO: Confirm if this means all users should be migrated to keycloak first.
 	handlers := []events.EventHandler{
 		&events.DebugEventHandler{},
 	}
