@@ -165,100 +165,87 @@ func main() {
 		Handler: router,
 	}
 
-	wg := sync.WaitGroup{}
-	wg.Add(4)
-	shutdown := make(chan struct{}, 2)
+	// listen to signals to stop server & consumers
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	// listen to signals to stop consumer
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-
-	go func(stop chan os.Signal) {
-		<-stop
-		log.Println("SIGINT or SIGTERM received")
-		shutdown <- struct{}{}
-	}(stop)
-
-	_, cancel := context.WithCancel(context.Background())
-	go func(wg *sync.WaitGroup) {
-		defer func() { shutdown <- struct{}{} }()
-
+	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			log.Println(errors.Wrap(err, "Unable to start server"))
 		}
-	}(&wg)
+	}()
 
-	go func(wg *sync.WaitGroup) {
-		defer func() { shutdown <- struct{}{} }()
-
-		err = cg.Start()
-		if err != nil {
+	go func() {
+		if err := cg.Start(); err != nil {
 			log.Println(errors.Wrap(err, "Unable to start consumer"))
 		} else {
 			log.Println("Consumer stopped")
 		}
+	}()
 
-	}(&wg)
-
-	go func(wg *sync.WaitGroup) {
-		defer func() { shutdown <- struct{}{} }()
-
-		err = keycloakUsersCg.Start()
-		if err != nil {
-			log.Println(errors.Wrap(err, "Unable to start consumer"))
+	go func() {
+		if err := keycloakUsersCg.Start(); err != nil {
+			log.Println(errors.Wrap(err, "Unable to start keycloak users consumer"))
 		} else {
-			log.Println("Consumer stopped")
+			log.Println("Keycloak users consumer stopped")
 		}
-	}(&wg)
+	}()
 
-	go func(wg *sync.WaitGroup) {
-		defer func() { shutdown <- struct{}{} }()
-
-		err = keycloakRolesCg.Start()
-		if err != nil {
-			log.Println(errors.Wrap(err, "Unable to start consumer"))
+	go func() {
+		if err := keycloakRolesCg.Start(); err != nil {
+			log.Println(errors.Wrap(err, "Unable to start keycloak roles consumer"))
 		} else {
-			log.Println("Consumer stopped")
+			log.Println("Keycloak roles consumer stopped")
 		}
-	}(&wg)
+	}()
 
-	go func(shutdown chan struct{}, cancel context.CancelFunc, wg *sync.WaitGroup) {
-		defer cancel()
-		<-shutdown
+	go func() {
+		if err := keycloakUserAttrCg.Start(); err != nil {
+			log.Println(errors.Wrap(err, "Unable to start keycloak user attributes consumer"))
+		} else {
+			log.Println("Keycloak user attributes consumer stopped")
+		}
+	}()
+
+	defer func() {
 		log.Println("Shutting down")
 
-		go func() {
-			defer wg.Done()
+		wg := sync.WaitGroup{}
+		wg.Go(func() {
 			shutdownCtx, c := context.WithTimeout(context.Background(), time.Second*60)
 			defer c()
 			if err := srv.Shutdown(shutdownCtx); err != nil {
 				log.Println(errors.Wrap(err, "Unable to shutdown server"))
 			}
-		}()
+		})
 
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if err := cg.Stop(); err != nil {
 				log.Println(errors.Wrap(err, "Unable to stop user events consumer group"))
 			}
-		}()
+		})
 
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if err := keycloakUsersCg.Stop(); err != nil {
 				log.Println(errors.Wrap(err, "Unable to stop keycloak users consumer group"))
 			}
-		}()
+		})
 
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if err := keycloakRolesCg.Stop(); err != nil {
 				log.Println(errors.Wrap(err, "Unable to stop keycloak roles consumer group"))
 			}
-		}()
-	}(shutdown, cancel, &wg)
+		})
 
-	wg.Wait()
+		wg.Go(func() {
+			if err := keycloakUserAttrCg.Stop(); err != nil {
+				log.Println(errors.Wrap(err, "Unable to stop keycloak user attributes consumer group"))
+			}
+		})
+
+		wg.Wait()
+	}()
+	<-ctx.Done()
 }
 
 func buildShoreline(config *ServiceConfig) (shoreline.Client, error) {
