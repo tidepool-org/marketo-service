@@ -38,6 +38,12 @@ type RolesEventKey struct {
 	UserId string `json:"user_id"`
 }
 
+type UserAttrEventKey struct {
+	Name   string `json:"name"`
+	Value  string `json:"value"`
+	UserId string `json:"user_id"`
+}
+
 type UserDAO struct {
 	Id            string `json:"id"`
 	Email         string `json:"email"`
@@ -108,6 +114,39 @@ func (k *KeycloakRoleEventsConsumer) HandleKafkaMessage(cm *sarama.ConsumerMessa
 
 	log.Printf("Refreshing user %v\n", key.UserId)
 	return k.userEventsHandler.RefreshUser(ctx, key.UserId)
+}
+
+var _ events.MessageConsumer = &KeycloakUserAttrEventsConsumer{}
+
+type KeycloakUserAttrEventsConsumer struct {
+	userEventsHandler *KeycloakEventsHandler
+}
+
+func NewKeycloakUserAttrEventsConsumer(userEventsHandler *KeycloakEventsHandler) (*KeycloakUserAttrEventsConsumer, error) {
+	return &KeycloakUserAttrEventsConsumer{userEventsHandler: userEventsHandler}, nil
+}
+
+func (k *KeycloakUserAttrEventsConsumer) Initialize(config *events.CloudEventsConfig) error {
+	return nil
+}
+
+func (k *KeycloakUserAttrEventsConsumer) HandleKafkaMessage(cm *sarama.ConsumerMessage) error {
+	key := UserAttrEventKey{}
+	if err := json.Unmarshal(cm.Key, &key); err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	// This check is not strictly necessary since the debezium filter already
+	// checks that the attribute is terms and conditions but it also doesn't
+	// hurt.
+	if key.Name == "terms_and_conditions" && key.Value != "" {
+		log.Printf("Refreshing user due to terms and conditions accepted.%v\n", key.UserId)
+		return k.userEventsHandler.RefreshUser(ctx, key.UserId)
+	}
+	return nil
 }
 
 type KeycloakEventsHandler struct {

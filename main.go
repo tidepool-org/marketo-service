@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	keycloakUsersTopic = "keycloak.public.user_entity"
-	keycloakRolesTopic = "keycloak.public.user_role_mapping"
+	keycloakUsersTopic     = "keycloak.public.user_entity"
+	keycloakRolesTopic     = "keycloak.public.user_role_mapping"
+	keycloakUsersAttrTopic = "keycloak.public.user_attribute"
 )
 
 type Config struct {
@@ -135,6 +136,21 @@ func main() {
 
 	keycloakRolesCg, err := events.NewFaultTolerantConsumerGroup(&keycloakRolesConfig, func() (events.MessageConsumer, error) {
 		return handler.NewKeycloakRoleEventsConsumer(&keycloakEventsHandler)
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	keycloakUserAttrConfig := *cloudEventsConfig
+	keycloakUserAttrConfig.KafkaTopic = keycloakUsersAttrTopic
+	keycloakUserAttrConfig.KafkaDeadLettersTopic = ""
+	// CDC topic use '.' separator instead of '-'
+	if strings.HasSuffix(keycloakUserAttrConfig.KafkaTopicPrefix, "-") {
+		keycloakUserAttrConfig.KafkaTopicPrefix = strings.TrimSuffix(keycloakUserAttrConfig.KafkaTopicPrefix, "-") + "."
+	}
+
+	keycloakUserAttrCg, err := events.NewFaultTolerantConsumerGroup(&keycloakUserAttrConfig, func() (events.MessageConsumer, error) {
+		return handler.NewKeycloakUserAttrEventsConsumer(&keycloakEventsHandler)
 	})
 	if err != nil {
 		log.Fatalln(err)
