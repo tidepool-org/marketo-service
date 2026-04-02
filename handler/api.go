@@ -1,15 +1,21 @@
 package handler
 
 import (
-	"github.com/gorilla/mux"
-	"github.com/tidepool-org/go-common/clients/shoreline"
+	"context"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/mux"
+	"github.com/tidepool-org/go-common/clients/shoreline"
 )
 
 const tidepoolSessionTokenKey = "x-tidepool-session-token"
 
-func RefreshUser(handler *UserEventsHandler, shorelineClient shoreline.Client) http.HandlerFunc {
+type Refresher interface {
+	RefreshUser(ctx context.Context, userId string) error
+}
+
+func RefreshUser(refresher Refresher, shorelineClient shoreline.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		userId := vars["userId"]
@@ -24,7 +30,7 @@ func RefreshUser(handler *UserEventsHandler, shorelineClient shoreline.Client) h
 			return
 		}
 
-		err := handler.RefreshUser(r.Context(), userId)
+		err := refresher.RefreshUser(r.Context(), userId)
 		if err != nil {
 			log.Printf("unable to refresh user %v: %v\n", userId, err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
