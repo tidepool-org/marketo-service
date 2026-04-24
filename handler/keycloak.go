@@ -38,17 +38,24 @@ type RolesEventKey struct {
 	UserId string `json:"user_id"`
 }
 
-type UserAttrEventKey struct {
-	Name   string `json:"name"`
-	Value  string `json:"value"`
-	UserId string `json:"user_id"`
-}
-
 type UserDAO struct {
 	Id            string `json:"id"`
 	Email         string `json:"email"`
 	EmailVerified bool   `json:"email_verified"`
 	Username      string `json:"username"`
+}
+
+type KeycloakUserAttrEvent struct {
+	Op     string       `json:"op"`
+	Before *UserAttrDAO `json:"before"`
+	After  *UserAttrDAO `json:"after"`
+}
+
+type UserAttrDAO struct {
+	Id     string `json:"id"`
+	Name   string `json:"name"`
+	UserId string `json:"user_id"`
+	Value  string `json:"value"`
 }
 
 var _ events.MessageConsumer = &KeycloakUserEventsConsumer{}
@@ -131,20 +138,28 @@ func (k *KeycloakUserAttrEventsConsumer) Initialize(config *events.CloudEventsCo
 }
 
 func (k *KeycloakUserAttrEventsConsumer) HandleKafkaMessage(cm *sarama.ConsumerMessage) error {
-	key := UserAttrEventKey{}
-	if err := json.Unmarshal(cm.Key, &key); err != nil {
+	m := kafka_sarama.NewMessageFromConsumerMessage(cm)
+	if m.Value == nil {
+		// Ignore tombstone messages
+		return nil
+	}
+
+	event := KeycloakUserAttrEvent{}
+	if err := json.Unmarshal(m.Value, &event); err != nil {
 		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// This check is not strictly necessary since the debezium filter already
-	// checks that the attribute is terms and conditions but it also doesn't
-	// hurt.
-	if key.Name == "terms_and_conditions" && key.Value != "" {
-		log.Printf("Refreshing user due to terms and conditions accepted.%v\n", key.UserId)
-		return k.userEventsHandler.RefreshUser(ctx, key.UserId)
+	switch event.Op {
+	// Deleted user attribute not handled here as the regular user deleted handler will handle that.
+	case Snapshot, Create, Update:
+		if event.After != nil && event.After.Name == "terms_and_conditions" && event.After.Value != "" && event.After.UserId != "" {
+			log.Printf("Refreshing user due to terms and conditions accepted.%v\n", event.After.UserId)
+			return k.userEventsHandler.RefreshUser(ctx, event.After.UserId)
+
+		}
 	}
 	return nil
 }
