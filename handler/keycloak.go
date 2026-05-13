@@ -45,6 +45,19 @@ type UserDAO struct {
 	Username      string `json:"username"`
 }
 
+type KeycloakUserAttrEvent struct {
+	Op     string       `json:"op"`
+	Before *UserAttrDAO `json:"before"`
+	After  *UserAttrDAO `json:"after"`
+}
+
+type UserAttrDAO struct {
+	Id     string `json:"id"`
+	Name   string `json:"name"`
+	UserId string `json:"user_id"`
+	Value  string `json:"value"`
+}
+
 var _ events.MessageConsumer = &KeycloakUserEventsConsumer{}
 
 type KeycloakUserEventsConsumer struct {
@@ -110,6 +123,47 @@ func (k *KeycloakRoleEventsConsumer) HandleKafkaMessage(cm *sarama.ConsumerMessa
 	return k.userEventsHandler.RefreshUser(ctx, key.UserId)
 }
 
+var _ events.MessageConsumer = &KeycloakUserAttrEventsConsumer{}
+
+type KeycloakUserAttrEventsConsumer struct {
+	userEventsHandler *KeycloakEventsHandler
+}
+
+func NewKeycloakUserAttrEventsConsumer(userEventsHandler *KeycloakEventsHandler) (*KeycloakUserAttrEventsConsumer, error) {
+	return &KeycloakUserAttrEventsConsumer{userEventsHandler: userEventsHandler}, nil
+}
+
+func (k *KeycloakUserAttrEventsConsumer) Initialize(config *events.CloudEventsConfig) error {
+	return nil
+}
+
+func (k *KeycloakUserAttrEventsConsumer) HandleKafkaMessage(cm *sarama.ConsumerMessage) error {
+	m := kafka_sarama.NewMessageFromConsumerMessage(cm)
+	if m.Value == nil {
+		// Ignore tombstone messages
+		return nil
+	}
+
+	event := KeycloakUserAttrEvent{}
+	if err := json.Unmarshal(m.Value, &event); err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	switch event.Op {
+	// Deleted user attribute not handled here as the regular user deleted handler will handle that.
+	case Snapshot, Create, Update:
+		if event.After != nil && event.After.Name == "terms_and_conditions" && event.After.Value != "" && event.After.UserId != "" {
+			log.Printf("Refreshing user due to terms and conditions accepted.%v\n", event.After.UserId)
+			return k.userEventsHandler.RefreshUser(ctx, event.After.UserId)
+
+		}
+	}
+	return nil
+}
+
 type KeycloakEventsHandler struct {
 	Clinics        clinic.ClientWithResponsesInterface
 	Shoreline      shoreline.Client
@@ -146,6 +200,10 @@ func (k *KeycloakEventsHandler) UpsertUser(event KeycloakUsersEvent) error {
 
 	// Don't upsert the user in marketo because the user is already deleted
 	if user == nil {
+		return nil
+	}
+	// Don't issue marketo calls until user accepts terms
+	if user.TermsAccepted == "" {
 		return nil
 	}
 
@@ -188,7 +246,7 @@ func (k *KeycloakEventsHandler) RefreshUser(ctx context.Context, userId string) 
 	}
 	// The user hasn't verified their account.
 	// They'll be added to marketo later when the user object is updated.
-	if !user.EmailVerified {
+	if !user.EmailVerified || user.TermsAccepted == "" {
 		return nil
 	}
 	clinics, err := k.getClinicsForClinician(ctx, userId)
