@@ -3,7 +3,6 @@ package marketo_test
 import (
 	"encoding/json"
 	"fmt"
-	clinic "github.com/tidepool-org/clinic/client"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	clinic "github.com/tidepool-org/clinic/client"
 	"github.com/tidepool-org/go-common/clients/shoreline"
 	"github.com/tidepool-org/marketo-service/marketo"
 )
@@ -396,7 +396,7 @@ const (
 		"success":true
 	}`
 	createLeadRequest = `{
-		"action":"createOnly",
+		"action":"createOrUpdate",
 		"lookupField":"email",
 		"input": [{"email": "%s", "firstName": "%s", "lastName": "%s", "userType": "%s"}]
 	}`
@@ -598,8 +598,8 @@ func Test_CreateListMember(t *testing.T) {
 			if len(requestBody.Input) != 1 {
 				t.Errorf("Expected one lead, got %d", len(requestBody.Input))
 			}
-			if requestBody.Action != "createOnly" {
-				t.Errorf("Expected 'createOnly', got %s", requestBody.Action)
+			if requestBody.Action != "createOrUpdate" {
+				t.Errorf("Expected 'createOrUpdate', got %s", requestBody.Action)
 			}
 			if requestBody.LookupField != "email" {
 				t.Errorf("Expected 'email', got %s", requestBody.LookupField)
